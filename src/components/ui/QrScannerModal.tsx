@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Camera, ScanLine } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -15,7 +16,12 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
     const isRunningRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [isStarting, setIsStarting] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const stopScanner = async () => {
         if (scannerRef.current && isRunningRef.current) {
@@ -28,7 +34,7 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
     };
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || !isMounted) return;
 
         let mounted = true;
         setError(null);
@@ -90,18 +96,18 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
             clearTimeout(timer);
             stopScanner();
         };
-    }, [isOpen]);
+    }, [isOpen, isMounted]);
 
     const handleClose = () => {
         stopScanner();
         onClose();
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !isMounted) return null;
 
-    return (
+    return createPortal(
         <>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
                 {/* Backdrop */}
                 <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
@@ -152,12 +158,23 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
 
             {/* Global override for html5-qrcode video element to prevent stretching on iOS */}
             <style jsx global>{`
+                #qr-scanner-region {
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
                 #qr-scanner-region video {
                     object-fit: cover !important;
                     width: 100% !important;
                     height: 100% !important;
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
                 }
             `}</style>
-        </>
+        </>,
+        document.body
     );
 };

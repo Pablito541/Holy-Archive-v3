@@ -72,6 +72,22 @@ export const QrCodeSection = ({ itemId, brand, model }: QrCodeSectionProps) => {
                     .brand { font-size: 14px; font-weight: 600; color: #000; }
                     .model { font-size: 12px; color: #555; }
                     
+                    /* Button to close tab after printing */
+                    .close-btn {
+                        margin-top: 24px;
+                        padding: 12px 24px;
+                        background: #18181b;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-family: inherit;
+                    }
+                    
                     @media print {
                         html, body {
                             width: 62mm;
@@ -83,15 +99,21 @@ export const QrCodeSection = ({ itemId, brand, model }: QrCodeSectionProps) => {
                             justify-content: center;
                             padding: 2mm;
                         }
+                        .close-btn {
+                            display: none;
+                        }
                     }
                 </style>
             </head>
             <body>
-                <div class="label">
-                    <div id="qr-placeholder"></div>
-                    <div class="id">#${shortId}</div>
-                    <div class="brand">${brand}</div>
-                    <div class="model">${model || ''}</div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div class="label">
+                        <div id="qr-placeholder"></div>
+                        <div class="id">#${shortId}</div>
+                        <div class="brand">${brand}</div>
+                        <div class="model">${model || ''}</div>
+                    </div>
+                    <button class="close-btn" onclick="window.close()">Zurück zur App</button>
                 </div>
                 <script>
                     window.onload = function() {
@@ -118,12 +140,12 @@ export const QrCodeSection = ({ itemId, brand, model }: QrCodeSectionProps) => {
     };
 
     return (
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-stone-200 dark:border-zinc-800">
-            <h3 className="text-xs font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest mb-5">QR-Code & Artikel-ID</h3>
+        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-[2rem] border border-stone-200 dark:border-zinc-800">
+            <h3 className="text-xs font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest mb-4 sm:mb-5">QR-Code & Artikel-ID</h3>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 sm:gap-6">
                 {/* QR Code */}
-                <div ref={printRef} className="flex-shrink-0 bg-white p-3 rounded-2xl border border-stone-100 dark:border-zinc-700">
+                <div ref={printRef} className="flex-shrink-0 bg-white p-2 sm:p-3 rounded-2xl border border-stone-100 dark:border-zinc-700">
                     <QRCodeSVG
                         value={qrValue}
                         size={100}
@@ -134,26 +156,26 @@ export const QrCodeSection = ({ itemId, brand, model }: QrCodeSectionProps) => {
                 </div>
 
                 {/* ID & Actions */}
-                <div className="flex-1 min-w-0 space-y-3">
-                    <div>
-                        <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest">Artikel-ID</span>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="font-mono text-lg font-bold text-stone-900 dark:text-white tracking-wider">#{shortId}</span>
+                <div className="flex-1 w-full min-w-0 space-y-3">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest mb-1">Artikel-ID</span>
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-base font-bold text-stone-700 dark:text-zinc-300 tracking-[0.05em]">#{shortId}</span>
                             <button
                                 onClick={handleCopy}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white transition-colors"
+                                className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white transition-colors"
                                 title="ID kopieren"
                             >
-                                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                             </button>
                         </div>
                     </div>
 
                     <button
                         onClick={handlePrint}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 text-xs font-bold transition-colors"
+                        className="w-full justify-center flex items-center gap-2 px-3 py-2.5 rounded-xl bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 text-xs font-bold transition-colors whitespace-nowrap"
                     >
-                        <Printer className="w-3.5 h-3.5" />
+                        <Printer className="w-5 h-5 text-stone-900 dark:text-zinc-100 flex-shrink-0" />
                         Label drucken
                     </button>
                 </div>
