@@ -49,8 +49,6 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
                             const qrboxSize = Math.floor(minEdgeSize * 0.75); // 75% of container size
                             return { width: qrboxSize, height: qrboxSize };
                         },
-                        // Specify supported formats to speed up scanning
-                        formatsToSupport: [0], // 0 is Html5QrcodeSupportedFormats.QR_CODE
                         // Removing aspectRatio constraint since forcing 1:1 can cause issues/stretching on iOS Safari
                     },
                     (decodedText) => {
@@ -102,53 +100,64 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
+        <>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                {/* Backdrop */}
+                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
-            {/* Modal */}
-            <div className="relative z-10 bg-white dark:bg-zinc-900 rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
-                        <h3 className="font-serif font-bold text-lg text-stone-900 dark:text-white">QR-Code scannen</h3>
+                {/* Modal */}
+                <div className="relative z-10 bg-white dark:bg-zinc-900 rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-2">
+                            <Camera className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                            <h3 className="font-serif font-bold text-lg text-stone-900 dark:text-white">QR-Code scannen</h3>
+                        </div>
+                        <button
+                            onClick={handleClose}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
-                    <button
-                        onClick={handleClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white transition-colors"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
 
-                {/* Scanner Area */}
-                <div className="p-6">
-                    <div
-                        ref={containerRef}
-                        className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black"
-                    >
-                        <div id="qr-scanner-region" className="w-full h-full" />
+                    {/* Scanner Area */}
+                    <div className="p-6">
+                        <div
+                            ref={containerRef}
+                            className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black"
+                        >
+                            <div id="qr-scanner-region" className="w-full h-full" />
 
-                        {isStarting && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/70 gap-3">
-                                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                <span className="text-sm font-medium">Kamera wird gestartet…</span>
+                            {isStarting && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-white/70 gap-3">
+                                    <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span className="text-sm font-medium">Kamera wird gestartet…</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {error && (
+                            <div className="mt-4 p-3 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-sm text-center">
+                                {error}
                             </div>
                         )}
+
+                        <p className="mt-4 text-center text-xs text-stone-400 dark:text-zinc-500">
+                            Halte den QR-Code des Artikels vor die Kamera
+                        </p>
                     </div>
-
-                    {error && (
-                        <div className="mt-4 p-3 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-sm text-center">
-                            {error}
-                        </div>
-                    )}
-
-                    <p className="mt-4 text-center text-xs text-stone-400 dark:text-zinc-500">
-                        Halte den QR-Code des Artikels vor die Kamera
-                    </p>
                 </div>
             </div>
-        </div>
+
+            {/* Global override for html5-qrcode video element to prevent stretching on iOS */}
+            <style jsx global>{`
+                #qr-scanner-region video {
+                    object-fit: cover !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+            `}</style>
+        </>
     );
 };
