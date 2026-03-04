@@ -42,6 +42,9 @@ export const SalesChart = ({ serverData, months = 12 }: { serverData?: any[], mo
         return null;
     };
 
+    const minNetProfit = chartData.reduce((min, data) => Math.min(min, data.net_profit || 0), 0);
+    const yAxisDomain = minNetProfit < 0 ? ['auto', 'auto'] : [0, 'auto'];
+
     return (
         <div className="w-full h-80 pt-4 -mx-2 sm:-mx-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -72,6 +75,7 @@ export const SalesChart = ({ serverData, months = 12 }: { serverData?: any[], mo
                         tickLine={false}
                         tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
                         tick={{ fill: '#9ca3af', fontSize: 12 }}
+                        domain={yAxisDomain}
                     />
                     <Tooltip content={<CustomTooltip />} />
 

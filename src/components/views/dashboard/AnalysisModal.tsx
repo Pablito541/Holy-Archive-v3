@@ -9,7 +9,7 @@ interface AnalysisModalProps {
     onClose: () => void;
     topBrands: any[];
     currentOrgId: string | undefined | null;
-    timeframe: 'month' | '3months' | 'all';
+    timeframe: 'month' | 'last_month' | '3months' | 'year' | 'all';
 }
 
 export const AnalysisModal: React.FC<AnalysisModalProps> = ({ type, onClose, topBrands, currentOrgId, timeframe }) => {
@@ -52,11 +52,26 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ type, onClose, top
                     startOfMonth.setDate(1);
                     startOfMonth.setHours(0, 0, 0, 0);
                     query = query.gte('sale_date', startOfMonth.toISOString());
+                } else if (timeframe === 'last_month') {
+                    const startOfLastMonth = new Date();
+                    startOfLastMonth.setMonth(startOfLastMonth.getMonth() - 1);
+                    startOfLastMonth.setDate(1);
+                    startOfLastMonth.setHours(0, 0, 0, 0);
+
+                    const startOfMonth = new Date();
+                    startOfMonth.setDate(1);
+                    startOfMonth.setHours(0, 0, 0, 0);
+                    query = query.gte('sale_date', startOfLastMonth.toISOString()).lt('sale_date', startOfMonth.toISOString());
                 } else if (timeframe === '3months') {
                     // Last 3 months listing
                     const threeMonthsAgo = new Date();
                     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
                     query = query.gte('sale_date', threeMonthsAgo.toISOString());
+                } else if (timeframe === 'year') {
+                    const startOfYear = new Date();
+                    startOfYear.setMonth(0, 1);
+                    startOfYear.setHours(0, 0, 0, 0);
+                    query = query.gte('sale_date', startOfYear.toISOString());
                 }
 
                 const { data, error } = await query;

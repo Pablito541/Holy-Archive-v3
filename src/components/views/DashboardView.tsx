@@ -113,7 +113,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
     // We keep this variable name to minimize refactoring impact on the render section
     const displayStats = useMemo(() => {
         return {
-            totalProfit: stats.totalProfit,
+            totalProfit: stats.totalProfit - stats.totalExpenses,
             totalRevenue: stats.totalRevenue,
             totalSales: stats.totalSales,
             totalExpenses: stats.totalExpenses,
