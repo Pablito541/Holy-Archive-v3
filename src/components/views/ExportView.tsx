@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Filter, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, ArrowLeft, Loader2, Filter, ChevronDown } from 'lucide-react';
 import { Item } from '../../types';
+import { formatCurrency } from '../../lib/utils';
 import { FadeIn } from '../ui/FadeIn';
 import { Button } from '../ui/Button';
 import * as XLSX from 'xlsx';
 
-export const ExportView = ({ items }: { items: Item[] }) => {
+export const ExportView = ({ items, onBack }: { items: Item[], onBack?: () => void }) => {
+    const [isExporting, setIsExporting] = useState(false);
     const [selectedYear, setSelectedYear] = useState<number | 'all'>(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState<number | 'all'>('all');
     const [selectedQuarter, setSelectedQuarter] = useState<number | 'all'>('all');
@@ -206,13 +208,23 @@ export const ExportView = ({ items }: { items: Item[] }) => {
     };
 
     return (
-        <FadeIn className="p-6 pb-24">
-            <header className="mb-8 pt-2">
-                <h1 className="text-3xl font-serif font-bold text-stone-900 dark:text-zinc-50">Transaktions-Export</h1>
-                <p className="text-stone-500 dark:text-zinc-400 mt-1">Exportiere deine Daten für die Buchhaltung</p>
-            </header>
+        <FadeIn className="px-6 pt-safe pb-24 max-w-2xl mx-auto">
+            <div className="flex items-center gap-4 mb-4 sticky top-0 bg-[#fafaf9]/80 dark:bg-black/80 backdrop-blur-xl z-10 py-4 -mx-6 px-6">
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-50 shadow-sm hover:scale-105 active:scale-95 transition-all"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                )}
+                <div>
+                    <h1 className="font-serif font-bold text-3xl text-stone-900 dark:text-zinc-50">Export</h1>
+                    <p className="text-stone-500 dark:text-zinc-400 text-sm">Daten für Steuerberater oder Backup</p>
+                </div>
+            </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {/* Filter Card */}
                 <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 shadow-sm border border-stone-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-6">

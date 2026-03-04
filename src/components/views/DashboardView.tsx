@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Package, CreditCard, Sparkles, Store, Euro, ArrowRight, LogOut, User, Moon, Sun, Monitor } from 'lucide-react';
+import { TrendingUp, Package, CreditCard, Sparkles, Store, Euro, ArrowRight, LogOut, User, Moon, Sun, Monitor, Settings } from 'lucide-react';
 import { SalesChart } from '../ui/SalesChart';
 import { ChannelModal } from './dashboard/ChannelModal';
 import { ChannelsOverviewModal } from './dashboard/ChannelsOverviewModal';
@@ -14,7 +14,7 @@ import { supabase } from '../../lib/supabase';
 
 import { PullToRefresh } from '../ui/PullToRefresh';
 
-export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, onLogout, onRefresh, serverStats, currentUser, currentOrgId }: {
+export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, onLogout, onRefresh, serverStats, currentUser, currentOrgId, onOpenSettings }: {
     items: Item[],
     onViewInventory: () => void,
     onAddItem: () => void,
@@ -23,7 +23,8 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
     onRefresh: () => Promise<void>,
     serverStats?: any,
     currentUser?: any,
-    currentOrgId?: string | null
+    currentOrgId?: string | null,
+    onOpenSettings: () => void
 }) => {
     const [chartMonths, setChartMonths] = useState<3 | 12>(3);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -38,6 +39,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
         totalProfit: 0,
         totalRevenue: 0,
         totalSales: 0,
+        totalExpenses: 0,
         averageMargin: 0,
         inventoryValue: 0, // Added
         stockCount: 0, // Added
@@ -79,6 +81,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                         totalProfit: Number(s.totalProfit) || 0,
                         totalRevenue: Number(s.totalRevenue) || 0,
                         totalSales: Number(s.totalSales) || 0,
+                        totalExpenses: Number(s.totalExpenses) || 0,
                         averageMargin: Number(s.averageMargin) || 0,
 
                         inventoryValue: Number(s.inventoryValue) || 0,
@@ -111,6 +114,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
             totalProfit: stats.totalProfit,
             totalRevenue: stats.totalRevenue,
             totalSales: stats.totalSales,
+            totalExpenses: stats.totalExpenses,
             averageMargin: stats.averageMargin,
 
             // Inventory (Use server values)
@@ -186,6 +190,17 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                                     ))}
                                                 </div>
                                             </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    setIsProfileOpen(false);
+                                                    onOpenSettings();
+                                                }}
+                                                className="w-full flex items-center px-3 py-2 text-stone-700 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium mb-1"
+                                            >
+                                                <Settings className="w-4 h-4 mr-2" />
+                                                Einstellungen
+                                            </button>
 
                                             <button
                                                 onClick={onLogout}
@@ -266,6 +281,12 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                             </p>
                                         </div>
                                         <div>
+                                            <p className="text-stone-400 text-xs uppercase tracking-widest mb-2">Ausgaben</p>
+                                            <p className="text-xl sm:text-2xl font-bold text-white/90">
+                                                {isLoadingStats ? '...' : <AnimatedNumber value={stats.totalExpenses} format={formatCurrency} />}
+                                            </p>
+                                        </div>
+                                        <div>
                                             <p className="text-stone-400 text-xs uppercase tracking-widest mb-2">Verkäufe</p>
                                             <p className="text-xl sm:text-2xl font-bold text-white/90">
                                                 {isLoadingStats ? '...' : stats.totalSales} <span className="text-xs sm:text-sm font-normal text-stone-500">Stk.</span>
@@ -275,12 +296,6 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                             <p className="text-stone-400 text-xs uppercase tracking-widest mb-2">Marken</p>
                                             <p className="text-xl sm:text-2xl font-bold text-white/90">
                                                 {isLoadingStats ? '...' : stats.totalBrands}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-stone-400 text-xs uppercase tracking-widest mb-2">Kanäle</p>
-                                            <p className="text-xl sm:text-2xl font-bold text-white/90">
-                                                {isLoadingStats ? '...' : stats.totalChannels}
                                             </p>
                                         </div>
                                     </div>
@@ -384,7 +399,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                         )}
 
                         {/* Charts in responsive grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                             {/* Sales Chart (Revenue) */}
                             <Card className="p-6 bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 shadow-sm">
                                 <div className="flex justify-between items-center mb-4">
@@ -404,7 +419,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                         </button>
                                     </div>
                                 </div>
-                                <SalesChart items={items} months={chartMonths} type="revenue" serverData={displayStats.monthlyData} />
+                                <SalesChart serverData={displayStats.monthlyData} months={chartMonths} type="revenue" />
                             </Card>
 
                             {/* Profit Chart */}
@@ -412,14 +427,26 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-stone-800 dark:text-zinc-200">Gewinnentwicklung</h3>
                                     <div className="flex bg-stone-100 dark:bg-zinc-800 p-1 rounded-lg">
-                                        {/* Using same controls as Revenue chart for consistency */}
-                                        <div className="px-3 py-1 text-xs font-medium text-stone-400 select-none">
-                                            Sync mit Umsatz
-                                        </div>
+                                        <button
+                                            onClick={() => setChartMonths(3)}
+                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${chartMonths === 3 ? 'bg-white dark:bg-zinc-700 shadow-sm text-stone-900 dark:text-zinc-50' : 'text-stone-500 dark:text-zinc-400'}`}
+                                        >
+                                            3M
+                                        </button>
+                                        <button
+                                            onClick={() => setChartMonths(12)}
+                                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${chartMonths === 12 ? 'bg-white dark:bg-zinc-700 shadow-sm text-stone-900 dark:text-zinc-50' : 'text-stone-500 dark:text-zinc-400'}`}
+                                        >
+                                            1J
+                                        </button>
                                     </div>
                                 </div>
-                                <SalesChart items={items} months={chartMonths} type="profit" serverData={displayStats.monthlyData} />
+                                <SalesChart serverData={displayStats.monthlyData} months={chartMonths} type="profit" />
                             </Card>
+                        </div>
+
+                        {/* Analysis Section Grid (Charts removed from here as they are now in Hero Card) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                             {/* Sales Channels */}
                             <Card className="p-6 bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 shadow-sm dark:shadow-zinc-950/50 overflow-hidden lg:col-span-2">

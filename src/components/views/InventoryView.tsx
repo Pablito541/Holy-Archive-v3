@@ -1,11 +1,12 @@
-import React, { useMemo, useEffect } from 'react';
-import { Search, ShoppingBag, Tag, ArrowRight, ArrowLeft, CheckSquare, Square, X } from 'lucide-react';
+import React, { useMemo, useEffect, useState } from 'react';
+import { Search, ShoppingBag, Tag, ArrowRight, ArrowLeft, CheckSquare, Square, X, ShieldCheck, ScanLine } from 'lucide-react';
 import { Item, ItemStatus } from '../../types';
 import { formatCurrency } from '../../lib/utils';
 import { FadeIn } from '../ui/FadeIn';
 import { PullToRefresh } from '../ui/PullToRefresh';
+import { QrScannerModal } from '../ui/QrScannerModal';
 
-export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, hasMore, onRefresh = async () => { }, filter, onFilterChange, searchQuery, onSearchChange, selectedItemIds, onToggleItemSelection, onBulkSellStart, onExitBulkSelect }: {
+export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, hasMore, onRefresh = async () => { }, filter, onFilterChange, searchQuery, onSearchChange, selectedItemIds, onToggleItemSelection, onBulkSellStart, onExitBulkSelect, onSwitchToBulkSelect }: {
     items: Item[], onSelectItem: (id: string) => void;
     onLoadMore?: () => void;
     hasMore?: boolean;
@@ -19,21 +20,49 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
     onToggleItemSelection?: (id: string) => void;
     onBulkSellStart?: () => void;
     onExitBulkSelect?: () => void;
+    onSwitchToBulkSelect?: () => void;
 }) => {
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     const filteredItems = useMemo(() => {
-        let result = items.filter(i => {
+        let result: any[] = [];
+
+        items.forEach(i => {
             // In bulk_sell mode, only show in_stock items
             const targetStatus = selectionMode === 'bulk_sell' ? 'in_stock' : filter;
             const statusMatches = i.status === targetStatus;
-            const query = searchQuery.toLowerCase();
+
+            const query = searchQuery.toLowerCase().replace(/^#/, '');
+            const shortId = i.id.substring(0, 8).toLowerCase();
             const searchMatches = !query ||
                 i.brand.toLowerCase().includes(query) ||
                 (i.model && i.model.toLowerCase().includes(query)) ||
                 (i.purchaseSource && i.purchaseSource.toLowerCase().includes(query)) ||
-                i.id.toLowerCase().includes(query);
+                i.id.toLowerCase().includes(query) ||
+                shortId.includes(query);
 
-            return statusMatches && searchMatches;
+            if (statusMatches && searchMatches) {
+                result.push(i);
+
+                // If viewing sold items, pull out certificates as separate entries
+                if (filter === 'sold' && i.certificates) {
+                    i.certificates.forEach(cert => {
+                        if (cert.sale_price_eur !== undefined && cert.sale_price_eur !== null) {
+                            result.push({
+                                ...i, // spread parent to keep same base structure
+                                id: cert.id, // override id so react key doesn't clash
+                                isCertificate: true,
+                                parentId: i.id,
+                                brand: cert.provider?.name || 'Zertifikat',
+                                model: `für ${i.brand} ${i.model}`,
+                                purchasePriceEur: cert.cost_eur,
+                                salePriceEur: cert.sale_price_eur,
+                                imageUrls: [] // no images for certificates
+                            });
+                        }
+                    });
+                }
+            }
         });
 
         // Sort sold items by saleDate descending
@@ -63,9 +92,18 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                 <div className="p-6 h-full flex flex-col">
                     <header className="mb-4 pt-2">
                         {selectionMode === 'sell' ? (
-                            <div className="bg-stone-900 dark:bg-zinc-900 text-white p-4 rounded-2xl mb-4 shadow-xl shadow-stone-900/10 dark:shadow-zinc-950/50">
-                                <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-1">Verkauf erfassen</h2>
-                                <p className="font-serif font-bold text-xl">Wähle einen Artikel</p>
+                            <div className="bg-stone-900 dark:bg-zinc-900 text-white p-4 rounded-2xl mb-4 shadow-xl shadow-stone-900/10 dark:shadow-zinc-950/50 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500 mb-1">Verkauf erfassen</h2>
+                                    <p className="font-serif font-bold text-xl">Wähle einen Artikel</p>
+                                </div>
+                                <button
+                                    onClick={onSwitchToBulkSelect}
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                                    title="Mehrere Artikel auswählen"
+                                >
+                                    <CheckSquare className="w-5 h-5 text-white" />
+                                </button>
                             </div>
                         ) : isBulkSelect ? (
                             <div className="bg-stone-900 dark:bg-zinc-900 text-white p-4 rounded-2xl mb-4 shadow-xl shadow-stone-900/10 dark:shadow-zinc-950/50">
@@ -86,17 +124,26 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                             <h1 className="text-3xl font-serif font-bold text-stone-900 dark:text-zinc-50 mb-6">Inventar</h1>
                         )}
 
-                        <div className="relative mb-4">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500">
-                                <Search className="w-4 h-4" />
+                        <div className="relative mb-4 flex gap-2">
+                            <div className="relative flex-1">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500">
+                                    <Search className="w-4 h-4" />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Suche Marke, Modell, ID..."
+                                    value={searchQuery}
+                                    onChange={(e) => onSearchChange(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 focus:border-stone-800 dark:focus:border-zinc-600 outline-none transition-all placeholder:text-stone-300 dark:placeholder:text-zinc-600 font-medium text-sm dark:text-zinc-50"
+                                />
                             </div>
-                            <input
-                                type="text"
-                                placeholder="Suche Marke, Modell, ID..."
-                                value={searchQuery}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 focus:border-stone-800 dark:focus:border-zinc-600 outline-none transition-all placeholder:text-stone-300 dark:placeholder:text-zinc-600 font-medium text-sm dark:text-zinc-50"
-                            />
+                            <button
+                                onClick={() => setIsScannerOpen(true)}
+                                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white hover:border-stone-400 dark:hover:border-zinc-600 transition-all active:scale-95"
+                                title="QR-Code scannen"
+                            >
+                                <ScanLine className="w-5 h-5" />
+                            </button>
                         </div>
 
                         {selectionMode !== 'sell' && !isBulkSelect && (
@@ -153,7 +200,11 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                                         )}
 
                                         <div className="w-24 h-24 bg-stone-100 dark:bg-zinc-800 rounded-2xl mr-4 flex-shrink-0 relative overflow-hidden">
-                                            {item.imageUrls && item.imageUrls.length > 0 ? (
+                                            {item.isCertificate ? (
+                                                <div className="flex items-center justify-center h-full text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10">
+                                                    <ShieldCheck className="w-8 h-8" />
+                                                </div>
+                                            ) : item.imageUrls && item.imageUrls.length > 0 ? (
                                                 <img src={item.imageUrls[0]} alt={item.model} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-stone-300 dark:text-stone-600">
@@ -161,7 +212,7 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                                                 </div>
                                             )}
                                             <div className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm px-2 py-1 text-center border-t border-white/50 dark:border-zinc-800/50">
-                                                <span className="text-[10px] font-bold text-stone-900 dark:text-zinc-50">
+                                                <span className={`${item.isCertificate ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-zinc-50'} text-[10px] font-bold`}>
                                                     {formatCurrency(item.status === 'sold' ? (item.salePriceEur || 0) : item.purchasePriceEur)}
                                                 </span>
                                             </div>
@@ -176,10 +227,17 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                                             </div>
 
                                             <div className="flex justify-between items-end mt-auto">
-                                                <div className="flex items-center text-[10px] font-medium text-stone-400 dark:text-zinc-500 bg-stone-50 dark:bg-zinc-800 px-2 py-1 rounded-lg">
-                                                    <Tag className="w-3 h-3 mr-1.5" />
-                                                    {item.purchaseSource}
-                                                </div>
+                                                {item.isCertificate ? (
+                                                    <div className="flex items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
+                                                        <ShieldCheck className="w-3 h-3 mr-1.5" />
+                                                        Zertifikat
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center text-[10px] font-medium text-stone-400 dark:text-zinc-500 bg-stone-50 dark:bg-zinc-800 px-2 py-1 rounded-lg">
+                                                        <Tag className="w-3 h-3 mr-1.5" />
+                                                        {item.purchaseSource}
+                                                    </div>
+                                                )}
 
                                                 {!isBulkSelect && (
                                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${selectionMode === 'sell' ? 'bg-stone-900 dark:bg-zinc-800 text-white' : 'bg-stone-100 dark:bg-zinc-800 text-stone-400 dark:text-zinc-500 group-hover:bg-stone-900 dark:group-hover:bg-zinc-700 group-hover:text-white'}`}>
@@ -207,6 +265,15 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                     )}
                 </div>
             </PullToRefresh>
+
+            <QrScannerModal
+                isOpen={isScannerOpen}
+                onClose={() => setIsScannerOpen(false)}
+                onScan={(scannedId) => {
+                    onSearchChange(scannedId);
+                    setIsScannerOpen(false);
+                }}
+            />
 
         </FadeIn >
     );

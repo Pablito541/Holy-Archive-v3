@@ -8,8 +8,9 @@ import { Button } from '../ui/Button';
 
 import { BRANDS, CATEGORIES, CONDITIONS, SALES_CHANNELS } from '../../constants';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { supabase } from '../../lib/supabase';
 
-export const AddItemView = ({ onSave, onCancel, initialData }: { onSave: (item: Partial<Item>) => void, onCancel: () => void, initialData?: Item }) => {
+export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { onSave: (item: Partial<Item>, newCertificate?: { providerId: string, costEur: number }) => void, onCancel: () => void, initialData?: Item, currentOrgId?: string | null }) => {
     const [formData, setFormData] = useState<Partial<Item>>(initialData || {
         brand: '',
         category: 'bag',
@@ -28,6 +29,7 @@ export const AddItemView = ({ onSave, onCancel, initialData }: { onSave: (item: 
     // Bulk upload mode
     const [isBulkMode, setIsBulkMode] = useState(false);
     const [bulkQuantity, setBulkQuantity] = useState(1);
+
 
     const {
         imageUrls,
@@ -85,15 +87,14 @@ export const AddItemView = ({ onSave, onCancel, initialData }: { onSave: (item: 
                     itemsToCreate.push(itemData);
                 }
 
-                // Save all items (sequentially to avoid race conditions)
                 for (const item of itemsToCreate) {
-                    await onSave(item);
+                    await onSave(item, undefined); // certificates mostly don't apply generically to bulk sell, or it's edge case
                 }
 
                 localStorage.removeItem('add_item_draft');
             } else {
                 // Normal single item save
-                await onSave({ ...formData, imageUrls: finalImageUrls });
+                await onSave({ ...formData, imageUrls: finalImageUrls }, undefined);
                 if (!initialData) {
                     localStorage.removeItem('add_item_draft');
                     // Reset images after successful add
@@ -391,6 +392,6 @@ export const AddItemView = ({ onSave, onCancel, initialData }: { onSave: (item: 
                             : 'Artikel anlegen'}
                 </Button>
             </form>
-        </FadeIn>
+        </FadeIn >
     );
 };

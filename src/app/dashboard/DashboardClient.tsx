@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Item, ItemStatus } from '../../types';
+import { Item, ItemStatus, Expense, CertificateProvider } from '../../types';
 import { generateId } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 
@@ -14,8 +14,13 @@ import { SellItemView } from '../../components/views/SellItemView';
 import { BulkSellView } from '../../components/views/BulkSellView';
 import { ItemDetailView } from '../../components/views/ItemDetailView';
 import { ExportView } from '../../components/views/ExportView';
+import { SettingsView } from '../../components/views/SettingsView';
 import { ActionMenu } from '../../components/views/ActionMenu';
 import { Navigation } from '../../components/views/Navigation';
+import { FinanzenView } from '../../components/views/FinanzenView';
+import { AddExpenseView } from '../../components/views/AddExpenseView';
+import { ExpenseDetailView } from '../../components/views/ExpenseDetailView';
+import { SellCertificateView } from '../../components/views/SellCertificateView';
 import { useToast } from '../../components/ui/Toast';
 
 const PAGE_SIZE = 50;
@@ -30,6 +35,8 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     const [user, setUser] = useState<any>(initialUser);
     const [view, setView] = useState(initialUser ? 'dashboard' : 'login');
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+    const [selectedExpenseCategoryName, setSelectedExpenseCategoryName] = useState('');
     const [showActionMenu, setShowActionMenu] = useState(false);
     const [selectionMode, setSelectionMode] = useState<'view' | 'sell' | 'bulk_sell'>('view');
     const [inventoryFilter, setInventoryFilter] = useState<ItemStatus>('in_stock');
@@ -38,6 +45,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const [items, setItems] = useState<Item[]>(initialItems);
     const [dashboardStats, setDashboardStats] = useState<any>(null);
+    const [certificateProviders, setCertificateProviders] = useState<CertificateProvider[]>([]);
     const [orgId, setOrgId] = useState<string | null>(initialOrgId);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(initialItems.length === PAGE_SIZE);
@@ -96,8 +104,10 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         if (!supabase || !orgId) return;
     };
 
-    const loadData = async (pageToLoad: number = 0, reset: boolean = false) => {
+    const loadData = async (pageToLoad: number = 0, reset: boolean = false, filterStatus?: ItemStatus) => {
         if (!supabase || !user || !orgId) return;
+
+        const currentFilter = filterStatus || inventoryFilter;
 
         setIsLoading(true);
         try {
@@ -109,13 +119,19 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             const from = pageToLoad * PAGE_SIZE;
             const to = from + PAGE_SIZE - 1;
 
-            // Include count in the query
-            const { data, error, count } = await supabase
+            let query = supabase
                 .from('items')
-                .select('*', { count: 'exact' })
+                .select('*, item_certificates(*, provider:certificate_providers(*))', { count: 'exact' })
                 .eq('organization_id', orgId)
-                .order('created_at', { ascending: false })
-                .range(from, to);
+                .eq('status', currentFilter);
+
+            if (currentFilter === 'sold') {
+                query = query.order('sale_date', { ascending: false, nullsFirst: false });
+            } else {
+                query = query.order('created_at', { ascending: false });
+            }
+
+            const { data, error, count } = await query.range(from, to);
 
             if (data && !error) {
                 const mappedItems: Item[] = data.map((d: any) => ({
@@ -135,6 +151,16 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                     shippingCostEur: d.shipping_cost_eur,
                     reservedFor: d.reserved_for,
                     reservedUntil: d.reserved_until,
+                    certificates: d.item_certificates?.map((c: any) => ({
+                        id: c.id,
+                        organization_id: c.organization_id,
+                        item_id: c.item_id,
+                        certificate_provider_id: c.certificate_provider_id,
+                        cost_eur: c.cost_eur,
+                        sale_price_eur: c.sale_price_eur,
+                        created_at: c.created_at,
+                        provider: c.provider
+                    })) || [],
                     imageUrls: d.image_urls || [],
                     notes: d.notes,
                     createdAt: d.created_at
@@ -169,11 +195,25 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             setIsLoading(false);
         }
     };
+    // Reusable: fetch certificate providers
+    const fetchCertificateProviders = () => {
+        if (!supabase || !orgId) return;
+        supabase
+            .from('certificate_providers')
+            .select('*')
+            .eq('organization_id', orgId)
+            .then(({ data, error }) => {
+                if (!error && data) {
+                    setCertificateProviders(data as CertificateProvider[]);
+                }
+            });
+    };
 
     // Fetch stats and items on mount/login
     useEffect(() => {
         if (user && orgId) {
             fetchStats(); // Always fetch fresh global stats
+            fetchCertificateProviders();
 
             // Only fetch items if we don't have them yet (initial load fallback)
             if (items.length === 0) {
@@ -181,6 +221,13 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             }
         }
     }, [user, orgId]);
+
+    // Refetch providers when returning from settings (image may have changed)
+    useEffect(() => {
+        if (view !== 'settings' && user && orgId) {
+            fetchCertificateProviders();
+        }
+    }, [view]);
 
     // Restore scroll position when returning to inventory view
     useEffect(() => {
@@ -198,7 +245,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         loadData(nextPage, false);
     };
 
-    const handleCreateItem = async (data: Partial<Item>) => {
+    const handleCreateItem = async (data: Partial<Item>, newCertificate?: { providerId: string, costEur: number }) => {
         try {
             const dbItem = {
                 user_id: user?.id,
@@ -223,6 +270,31 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                 }
 
                 if (inserted) {
+                    let newCertificates: any[] = [];
+                    // Insert certificate if provided
+                    if (newCertificate && orgId) {
+                        const { data: certInserted, error: certError } = await supabase.from('item_certificates').insert({
+                            organization_id: orgId,
+                            item_id: inserted.id,
+                            certificate_provider_id: newCertificate.providerId,
+                            cost_eur: newCertificate.costEur
+                        }).select().single();
+
+                        if (!certError && certInserted) {
+                            newCertificates.push({
+                                id: certInserted.id,
+                                organization_id: certInserted.organization_id,
+                                item_id: certInserted.item_id,
+                                certificate_provider_id: certInserted.certificate_provider_id,
+                                cost_eur: certInserted.cost_eur,
+                                sale_price_eur: certInserted.sale_price_eur,
+                                created_at: certInserted.created_at
+                            });
+                        } else if (certError) {
+                            console.error('Failed to create certificate:', certError);
+                        }
+                    }
+
                     const newItem: Item = {
                         id: inserted.id,
                         brand: inserted.brand,
@@ -240,6 +312,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                         shippingCostEur: inserted.shipping_cost_eur,
                         reservedFor: inserted.reserved_for,
                         reservedUntil: inserted.reserved_until,
+                        certificates: newCertificates,
                         imageUrls: inserted.image_urls || [],
                         notes: inserted.notes,
                         createdAt: inserted.created_at
@@ -285,7 +358,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         }
     };
 
-    const handleSellItem = async (id: string, saleData: any) => {
+    const handleSellItem = async (id: string, saleData: any, certSalePrices?: Record<string, number>, standaloneCertificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[]) => {
         try {
             if (!supabase) {
                 throw new Error('Supabase client not initialized');
@@ -305,8 +378,93 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                 throw error;
             }
 
+            if (certSalePrices && supabase) {
+                for (const [certId, price] of Object.entries(certSalePrices)) {
+                    const { error: certError } = await supabase.from('item_certificates')
+                        .update({ sale_price_eur: price })
+                        .eq('id', certId);
+
+                    if (certError) {
+                        console.error('Failed to update certificate sale price:', certError);
+                    }
+                }
+            }
+
+            // Create standalone certificate items if any
+            const newCertItems: Item[] = [];
+            if (standaloneCertificates && standaloneCertificates.length > 0) {
+                for (const cert of standaloneCertificates) {
+                    for (let i = 0; i < cert.quantity; i++) {
+                        const certItemData = {
+                            user_id: user?.id,
+                            organization_id: orgId,
+                            status: 'sold',
+                            category: 'other',
+                            condition: 'mint',
+                            brand: cert.provider || 'Zertifikat',
+                            model: 'Zertifikat',
+                            purchase_price_eur: cert.costEur,
+                            sale_price_eur: cert.salePriceEur,
+                            purchase_date: saleData.saleDate,
+                            sale_date: saleData.saleDate,
+                            sale_channel: saleData.saleChannel,
+                            buyer: saleData.buyer || null,
+                            image_urls: (() => {
+                                const prov = certificateProviders.find(p => p.name === cert.provider);
+                                return prov?.image_url ? [prov.image_url] : [];
+                            })(),
+                            created_at: new Date().toISOString(),
+                        };
+
+                        const { data: insertedCert, error } = await supabase.from('items').insert([certItemData]).select().single();
+
+                        if (error) {
+                            console.error('Error creating standalone certificate item:', error);
+                            throw error;
+                        }
+
+                        if (insertedCert) {
+                            newCertItems.push({
+                                id: insertedCert.id,
+                                category: insertedCert.category,
+                                condition: insertedCert.condition,
+                                brand: insertedCert.brand,
+                                model: insertedCert.model,
+                                status: insertedCert.status,
+                                purchasePriceEur: insertedCert.purchase_price_eur,
+                                purchaseDate: insertedCert.purchase_date,
+                                purchaseSource: '',
+                                salePriceEur: insertedCert.sale_price_eur,
+                                saleDate: insertedCert.sale_date,
+                                saleChannel: insertedCert.sale_channel,
+                                buyer: insertedCert.buyer,
+                                notes: '',
+                                imageUrls: [],
+                                createdAt: insertedCert.created_at
+                            });
+                        }
+                    }
+                }
+            }
+
             // Only update local state and show success if DB update succeeded
-            setItems(prev => prev.map(item => item.id === id ? { ...item, status: 'sold', ...saleData } : item));
+            setItems(prev => {
+                const nextState = prev.map(item => {
+                    if (item.id === id) {
+                        const updatedCerts = item.certificates?.map(c => ({
+                            ...c,
+                            sale_price_eur: certSalePrices?.[c.id] !== undefined ? certSalePrices[c.id] : c.sale_price_eur
+                        }));
+                        return { ...item, status: 'sold' as const, ...saleData, certificates: updatedCerts };
+                    }
+                    return item;
+                });
+
+                if (newCertItems.length > 0) {
+                    nextState.push(...newCertItems);
+                }
+                return nextState;
+            });
             fetchStats();
             showToast('Artikel als verkauft markiert', 'success');
             setView('inventory');
@@ -329,7 +487,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         });
     };
 
-    const handleBulkSell = async (data: { salePriceEur: number; saleDate: string; saleChannel: string; platformFeesEur: number; shippingCostEur: number; buyer: string }) => {
+    const handleBulkSell = async (data: { salePriceEur: number; saleDate: string; saleChannel: string; platformFeesEur: number; shippingCostEur: number; buyer: string; certificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[] }) => {
         try {
             if (!supabase) throw new Error('Supabase client not initialized');
 
@@ -368,22 +526,86 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                 }
             }
 
+            // Create standalone certificate items if any
+            const newCertItems: Item[] = [];
+            if (data.certificates && data.certificates.length > 0) {
+                for (const cert of data.certificates) {
+                    for (let i = 0; i < cert.quantity; i++) {
+                        const certItemData = {
+                            user_id: user?.id,
+                            organization_id: orgId,
+                            status: 'sold',
+                            category: 'other',
+                            condition: 'mint',
+                            brand: cert.provider || 'Zertifikat',
+                            model: 'Zertifikat',
+                            purchase_price_eur: cert.costEur,
+                            sale_price_eur: cert.salePriceEur,
+                            purchase_date: data.saleDate,
+                            sale_date: data.saleDate,
+                            sale_channel: data.saleChannel,
+                            buyer: data.buyer || null,
+                            image_urls: (() => {
+                                const prov = certificateProviders.find(p => p.name === cert.provider);
+                                return prov?.image_url ? [prov.image_url] : [];
+                            })(),
+                            created_at: new Date().toISOString(),
+                        };
+
+                        const { data: insertedCert, error } = await supabase.from('items').insert([certItemData]).select().single();
+
+                        if (error) {
+                            console.error('Error creating certificate item:', error);
+                            throw error;
+                        }
+
+                        if (insertedCert) {
+                            newCertItems.push({
+                                id: insertedCert.id,
+                                category: insertedCert.category,
+                                condition: insertedCert.condition,
+                                brand: insertedCert.brand,
+                                model: insertedCert.model,
+                                status: insertedCert.status,
+                                purchasePriceEur: insertedCert.purchase_price_eur,
+                                purchaseDate: insertedCert.purchase_date,
+                                purchaseSource: '',
+                                salePriceEur: insertedCert.sale_price_eur,
+                                saleDate: insertedCert.sale_date,
+                                saleChannel: insertedCert.sale_channel,
+                                buyer: insertedCert.buyer,
+                                notes: '',
+                                imageUrls: [],
+                                createdAt: insertedCert.created_at
+                            });
+                        }
+                    }
+                }
+            }
+
             // Update local state
-            setItems(prev => prev.map(item => {
-                if (!selectedItemIds.has(item.id)) return item;
-                const idx = selectedItems.findIndex(s => s.id === item.id);
-                const isFirst = idx === 0;
-                return {
-                    ...item,
-                    status: 'sold' as const,
-                    salePriceEur: isFirst ? pricePerItem + priceRemainder : pricePerItem,
-                    saleDate: data.saleDate,
-                    saleChannel: data.saleChannel,
-                    platformFeesEur: isFirst ? feesPerItem + feesRemainder : feesPerItem,
-                    shippingCostEur: isFirst ? shippingPerItem + shippingRemainder : shippingPerItem,
-                    buyer: data.buyer || undefined
-                };
-            }));
+            setItems(prev => {
+                const nextState = prev.map(item => {
+                    if (!selectedItemIds.has(item.id)) return item;
+                    const idx = selectedItems.findIndex(s => s.id === item.id);
+                    const isFirst = idx === 0;
+                    return {
+                        ...item,
+                        status: 'sold' as const,
+                        salePriceEur: isFirst ? pricePerItem + priceRemainder : pricePerItem,
+                        saleDate: data.saleDate,
+                        saleChannel: data.saleChannel,
+                        platformFeesEur: isFirst ? feesPerItem + feesRemainder : feesPerItem,
+                        shippingCostEur: isFirst ? shippingPerItem + shippingRemainder : shippingPerItem,
+                        buyer: data.buyer || undefined
+                    };
+                });
+
+                if (newCertItems.length > 0) {
+                    nextState.push(...newCertItems);
+                }
+                return nextState;
+            });
 
             fetchStats();
             showToast(`${count} Artikel als verkauft markiert`, 'success');
@@ -494,6 +716,21 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         }
     };
 
+    const handleDeleteExpense = async (expenseId: string) => {
+        if (!confirm('Ausgabe wirklich löschen?')) return;
+        if (!supabase || !orgId) return;
+        try {
+            const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+            if (error) throw error;
+            showToast('Ausgabe erfolgreich gelöscht', 'success');
+            setView('finances');
+            setSelectedExpense(null);
+        } catch (e: any) {
+            console.error('Error deleting expense:', e);
+            showToast('Fehler beim Löschen der Ausgabe', 'error');
+        }
+    };
+
     const handleLogout = async () => {
         if (supabase) await supabase.auth.signOut();
         setUser(null);
@@ -514,6 +751,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                 serverStats={dashboardStats}
                 currentUser={user}
                 currentOrgId={orgId}
+                onOpenSettings={() => setView('settings')}
             />
         );
 
@@ -531,7 +769,10 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                 hasMore={hasMore}
                 onRefresh={() => loadData(0, true)}
                 filter={inventoryFilter}
-                onFilterChange={setInventoryFilter}
+                onFilterChange={f => {
+                    setInventoryFilter(f);
+                    loadData(0, true, f);
+                }}
                 searchQuery={inventorySearchQuery}
                 onSearchChange={setInventorySearchQuery}
                 selectedItemIds={selectedItemIds}
@@ -543,6 +784,10 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                     }
                     setView('bulk-sell');
                 }}
+                onSwitchToBulkSelect={() => {
+                    setSelectionMode('bulk_sell');
+                    setSelectedItemIds(new Set());
+                }}
                 onExitBulkSelect={() => {
                     setSelectionMode('view');
                     setSelectedItemIds(new Set());
@@ -550,10 +795,24 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             />
         );
 
+        if (view === 'sell-certificate') return (
+            <SellCertificateView
+                onSave={(newItem) => {
+                    setItems(prev => [newItem, ...prev]);
+                    setView('dashboard');
+                    fetchStats();
+                    showToast('Zertifikat verkauft', 'success');
+                }}
+                onCancel={() => setView('dashboard')}
+                currentOrgId={orgId}
+            />
+        );
+
         if (view === 'add-item') return (
             <AddItemView
                 onSave={handleCreateItem}
                 onCancel={() => setView('dashboard')}
+                currentOrgId={orgId}
             />
         );
 
@@ -565,6 +824,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                     initialData={itemToEdit}
                     onSave={(data) => handleUpdateItem(selectedItemId, data)}
                     onCancel={() => setView('item-detail')}
+                    currentOrgId={orgId}
                 />
             );
         }
@@ -575,7 +835,8 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             return (
                 <SellItemView
                     item={itemToSell}
-                    onConfirm={(data) => handleSellItem(selectedItemId, data)}
+                    certificateProviders={certificateProviders}
+                    onConfirm={(data, certSalePrices, standaloneCerts) => handleSellItem(selectedItemId, data, certSalePrices, standaloneCerts)}
                     onCancel={() => setView('item-detail')}
                 />
             );
@@ -586,6 +847,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             return (
                 <BulkSellView
                     items={bulkItems}
+                    certificateProviders={certificateProviders}
                     onConfirm={handleBulkSell}
                     onCancel={() => {
                         setView('inventory');
@@ -611,7 +873,54 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             );
         }
 
-        if (view === 'export') return <ExportView items={items} />;
+        if (view === 'settings') return (
+            <SettingsView
+                onBack={() => setView('dashboard')}
+                onExport={() => setView('export')}
+                currentOrgId={orgId}
+            />
+        );
+
+        if (view === 'export') return (
+            <div className="min-h-screen bg-[#fafaf9] dark:bg-black">
+                <ExportView items={items} onBack={() => setView('settings')} />
+            </div>
+        );
+
+        if (view === 'finances') return (
+            <FinanzenView
+                currentOrgId={orgId}
+                onExpenseClick={(expense, catName) => {
+                    setSelectedExpense(expense);
+                    setSelectedExpenseCategoryName(catName);
+                    setView('expense-detail');
+                }}
+            />
+        );
+
+        if (view === 'expense-detail' && selectedExpense) return (
+            <ExpenseDetailView
+                expense={selectedExpense}
+                categoryName={selectedExpenseCategoryName}
+                onBack={() => setView('finances')}
+                onEdit={() => setView('edit-expense')}
+                onDelete={() => handleDeleteExpense(selectedExpense.id)}
+            />
+        );
+
+        if (view === 'add-expense' || view === 'edit-expense') return (
+            <AddExpenseView
+                currentOrgId={orgId}
+                initialData={view === 'edit-expense' && selectedExpense ? selectedExpense : undefined}
+                onSave={() => {
+                    setView('finances');
+                    setSelectedExpense(null);
+                }}
+                onCancel={() => {
+                    setView(view === 'edit-expense' ? 'expense-detail' : 'dashboard');
+                }}
+            />
+        );
 
         return null;
     };
@@ -620,7 +929,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         <div className="min-h-screen font-sans text-stone-900 dark:text-zinc-50 pb-20">
             {renderContent()}
 
-            {view !== 'login' && selectionMode !== 'bulk_sell' && (
+            {view !== 'login' && selectionMode !== 'bulk_sell' && view !== 'settings' && (
                 <Navigation
                     currentView={view}
                     onNavigate={(v) => {
@@ -665,7 +974,8 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                     onClose={() => setShowActionMenu(false)}
                     onAddItem={() => { setShowActionMenu(false); setView('add-item'); }}
                     onSellItem={() => { setShowActionMenu(false); setView('inventory'); setSelectionMode('sell'); }}
-                    onBulkSellItem={() => { setShowActionMenu(false); setView('inventory'); setSelectionMode('bulk_sell'); setSelectedItemIds(new Set()); }}
+                    onSellCertificate={() => { setShowActionMenu(false); setView('sell-certificate'); }}
+                    onAddExpense={() => { setShowActionMenu(false); setView('add-expense'); }}
                 />
             )}
         </div>

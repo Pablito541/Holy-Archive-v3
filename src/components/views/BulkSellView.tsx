@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, ShoppingBag, Package } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Plus, Trash2 } from 'lucide-react';
 import { Item } from '../../types';
 import { SALES_CHANNELS } from '../../constants';
 import { formatCurrency } from '../../lib/utils';
@@ -7,9 +7,11 @@ import { FadeIn } from '../ui/FadeIn';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
+import { CertificateProvider } from '../../types';
 
 interface BulkSellViewProps {
     items: Item[];
+    certificateProviders?: CertificateProvider[];
     onConfirm: (data: {
         salePriceEur: number;
         saleDate: string;
@@ -17,11 +19,12 @@ interface BulkSellViewProps {
         platformFeesEur: number;
         shippingCostEur: number;
         buyer: string;
+        certificates: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[];
     }) => void;
     onCancel: () => void;
 }
 
-export const BulkSellView = ({ items, onConfirm, onCancel }: BulkSellViewProps) => {
+export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCancel }: BulkSellViewProps) => {
     const [formData, setFormData] = useState({
         totalPrice: 0,
         saleDate: new Date().toISOString().split('T')[0],
@@ -30,6 +33,21 @@ export const BulkSellView = ({ items, onConfirm, onCancel }: BulkSellViewProps) 
         totalShipping: 0,
         buyer: ''
     });
+
+    const [certificates, setCertificates] = useState<{ id: string; providerId: string; quantity: number; salePriceEur: number; }[]>([]);
+
+    const addCertificateLine = () => {
+        const defaultProvider = certificateProviders.length > 0 ? certificateProviders[0].id : '';
+        setCertificates([...certificates, { id: Math.random().toString(), providerId: defaultProvider, quantity: 1, salePriceEur: 0 }]);
+    };
+
+    const removeCertificateLine = (id: string) => {
+        setCertificates(certificates.filter(c => c.id !== id));
+    };
+
+    const updateCertificate = (id: string, field: string, value: any) => {
+        setCertificates(certificates.map(c => c.id === id ? { ...c, [field]: value } : c));
+    };
 
     const count = items.length;
 
@@ -51,8 +69,16 @@ export const BulkSellView = ({ items, onConfirm, onCancel }: BulkSellViewProps) 
         }));
     }, [items, formData.totalPrice, formData.totalFees, formData.totalShipping, count]);
 
+    // Calculate total certificates impact on profit
+    const totalCertCost = certificates.reduce((sum, cert) => {
+        const prov = certificateProviders.find(p => p.id === cert.providerId);
+        return sum + ((prov ? prov.unit_cost_eur : 0) * cert.quantity);
+    }, 0);
+    const totalCertRevenue = certificates.reduce((sum, cert) => sum + (cert.salePriceEur * cert.quantity), 0);
+
     const totalPurchasePrice = items.reduce((sum, item) => sum + item.purchasePriceEur, 0);
-    const totalProfit = formData.totalPrice - totalPurchasePrice - formData.totalFees - formData.totalShipping;
+    // Profit = Total Revenue + Cert Revenue - Total Purchase Price - Cert Costs - Fees - Shipping
+    const totalProfit = formData.totalPrice + totalCertRevenue - totalPurchasePrice - totalCertCost - formData.totalFees - formData.totalShipping;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,12 +88,21 @@ export const BulkSellView = ({ items, onConfirm, onCancel }: BulkSellViewProps) 
             saleChannel: formData.saleChannel,
             platformFeesEur: formData.totalFees,
             shippingCostEur: formData.totalShipping,
-            buyer: formData.buyer
+            buyer: formData.buyer,
+            certificates: certificates.map(c => {
+                const prov = certificateProviders.find(p => p.id === c.providerId);
+                return {
+                    provider: prov ? prov.name : 'Unbekannt',
+                    quantity: c.quantity,
+                    costEur: prov ? prov.unit_cost_eur : 0,
+                    salePriceEur: c.salePriceEur
+                };
+            })
         });
     };
 
     return (
-        <FadeIn className="bg-[#fafaf9] dark:bg-zinc-950 min-h-screen pb-32">
+        <FadeIn className="bg-[#fafaf9] dark:bg-zinc-950 min-h-screen pb-32 overflow-x-hidden">
             <header className="px-6 py-6 flex items-center justify-between sticky top-0 bg-[#fafaf9]/90 dark:bg-zinc-950/90 backdrop-blur-xl z-20">
                 <button onClick={onCancel} className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 shadow-sm border border-stone-100 dark:border-zinc-800 text-stone-600 dark:text-zinc-400">
                     <ArrowLeft className="w-5 h-5" />
@@ -120,7 +155,7 @@ export const BulkSellView = ({ items, onConfirm, onCancel }: BulkSellViewProps) 
                 </div>
 
                 {/* Sale form */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-stone-100 dark:border-zinc-800 space-y-4">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-stone-100 dark:border-zinc-800 space-y-4 overflow-hidden">
                     <Input
                         label="Gesamtpreis (€)"
                         type="number"
@@ -195,8 +230,70 @@ export const BulkSellView = ({ items, onConfirm, onCancel }: BulkSellViewProps) 
                     </div>
                 )}
 
+                {/* Certificates */}
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-stone-100 dark:border-zinc-800 space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold uppercase tracking-widest text-stone-400 dark:text-zinc-500">
+                            Zusätzliche Zertifikate
+                        </span>
+                        <button
+                            type="button"
+                            onClick={addCertificateLine}
+                            className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:text-emerald-700 transition-colors"
+                        >
+                            <Plus className="w-3 h-3" /> Hinzufügen
+                        </button>
+                    </div>
+
+                    {certificates.length === 0 && (
+                        <p className="text-sm text-stone-400 dark:text-zinc-500 italic text-center py-2">Keine Zertifikate ausgewählt.</p>
+                    )}
+
+                    <div className="space-y-4">
+                        {certificates.map((cert) => (
+                            <div key={cert.id} className="relative p-4 rounded-2xl bg-stone-50 dark:bg-zinc-950 border border-stone-100 dark:border-zinc-800 space-y-3">
+                                <button
+                                    type="button"
+                                    onClick={() => removeCertificateLine(cert.id)}
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-full flex items-center justify-center text-red-500 hover:scale-110 transition-transform shadow-sm"
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </button>
+
+                                <div className="grid grid-cols-[1fr,80px] gap-2">
+                                    <Select
+                                        label="Anbieter"
+                                        options={[
+                                            { value: '', label: 'Bitte wählen...' },
+                                            ...certificateProviders.map(p => ({ value: p.id, label: p.name }))
+                                        ]}
+                                        value={cert.providerId}
+                                        onChange={(e: any) => updateCertificate(cert.id, 'providerId', e.target.value)}
+                                    />
+                                    <Input
+                                        label="Anzahl"
+                                        type="number"
+                                        value={cert.quantity}
+                                        onChange={(e: any) => updateCertificate(cert.id, 'quantity', parseInt(e.target.value) || 0)}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <Input
+                                        label="Verkaufspreis/Stk (€)"
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="z.B. 25 €"
+                                        value={cert.salePriceEur === 0 ? '' : cert.salePriceEur}
+                                        onChange={(e: any) => updateCertificate(cert.id, 'salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
                 {/* Profit summary */}
-                <div className={`p-6 rounded-[2rem] border transition-colors ${totalProfit >= 0 ? 'bg-emerald-900 text-emerald-50 border-emerald-800' : 'bg-red-50 dark:bg-red-950 border-red-100 dark:border-red-900 text-red-900 dark:text-red-200'}`}>
+                <div className={`p-6 rounded-[2rem] border transition-colors ${totalProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' : 'bg-red-50 dark:bg-red-500/10 text-red-900 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
                     <div className="flex justify-between items-center">
                         <span className="text-xs font-bold uppercase tracking-widest opacity-80">Geschätzter Gewinn</span>
                         <span className="text-3xl font-serif font-medium">

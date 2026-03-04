@@ -35,15 +35,22 @@ export const useImageUpload = ({
             const file = files[i];
             newFiles.push(file);
 
-            // Create preview
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                newPreviews.push(reader.result as string);
+            if (file.type === 'application/pdf') {
+                newPreviews.push('pdf-document');
                 if (newPreviews.length === newFiles.length) {
                     setImagePreviews(prev => [...prev, ...newPreviews]);
                 }
-            };
-            reader.readAsDataURL(file);
+            } else {
+                // Create preview
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    newPreviews.push(reader.result as string);
+                    if (newPreviews.length === newFiles.length) {
+                        setImagePreviews(prev => [...prev, ...newPreviews]);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
         }
 
         setPendingFiles(prev => [...prev, ...newFiles]);
@@ -72,30 +79,36 @@ export const useImageUpload = ({
 
         try {
             for (const file of pendingFiles) {
-                // Compress image & convert to WebP
-                const options = {
-                    maxSizeMB: 0.2, // Aggressive compression target (was 0.3)
-                    maxWidthOrHeight: 1280, // HD Ready is enough for mobile (was 1920)
-                    useWebWorker: true,
-                    fileType: 'image/webp' // Modern efficient format
-                };
-
                 let fileToUpload = file;
-                try {
-                    const imageCompression = (await import('browser-image-compression')).default;
-                    const compressedFile = await imageCompression(file, options);
-                    fileToUpload = compressedFile;
-                } catch (error) {
-                    console.error('Compression failed:', error);
+                let fileExt = file.name.split('.').pop() || 'tmp';
+                let contentType = file.type;
+
+                // Compress image & convert to WebP only if it's an image
+                if (file.type.startsWith('image/')) {
+                    const options = {
+                        maxSizeMB: 0.2, // Aggressive compression target (was 0.3)
+                        maxWidthOrHeight: 1280, // HD Ready is enough for mobile (was 1920)
+                        useWebWorker: true,
+                        fileType: 'image/webp' // Modern efficient format
+                    };
+
+                    try {
+                        const imageCompression = (await import('browser-image-compression')).default;
+                        const compressedFile = await imageCompression(file, options);
+                        fileToUpload = compressedFile;
+                    } catch (error) {
+                        console.error('Compression failed:', error);
+                    }
+
+                    fileExt = 'webp';
+                    contentType = 'image/webp';
                 }
 
-                // Force .webp extension since we converted it
-                const fileExt = 'webp';
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('images')
-                    .upload(fileName, fileToUpload);
+                    .upload(fileName, fileToUpload, { contentType });
 
                 if (uploadError) throw uploadError;
 

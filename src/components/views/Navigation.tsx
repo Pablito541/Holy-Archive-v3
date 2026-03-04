@@ -1,12 +1,12 @@
 import React from 'react';
-import { TrendingUp, Package, Plus, Download } from 'lucide-react';
+import { TrendingUp, Package, Plus, Wallet } from 'lucide-react';
 
 export const Navigation = ({ currentView, onNavigate }: { currentView: string, onNavigate: (view: string) => void }) => {
     const tabs = [
         { id: 'dashboard', icon: TrendingUp, label: 'Home' },
         { id: 'inventory', icon: Package, label: 'Lager' },
+        { id: 'finances', icon: Wallet, label: 'Finanzen' },
         { id: 'action', icon: Plus, label: 'Neu', special: true },
-        { id: 'export', icon: Download, label: 'Export' },
     ];
 
     return (

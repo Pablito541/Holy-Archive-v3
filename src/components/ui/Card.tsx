@@ -18,7 +18,7 @@ export const Card = ({
     const baseStyle = "rounded-3xl transition-all duration-300";
 
     const variants = {
-        default: "bg-white border border-stone-100 shadow-[0_2px_20px_rgba(0,0,0,0.04)]",
+        default: "bg-white dark:bg-zinc-900 border border-stone-100 dark:border-zinc-800 shadow-[0_2px_20px_rgba(0,0,0,0.04)] dark:shadow-none",
         glass: "glass shadow-glass",
         gradient: "gradient-brand text-white shadow-luxury"
     };
