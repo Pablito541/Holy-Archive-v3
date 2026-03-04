@@ -34,35 +34,55 @@ export const QrCodeSection = ({ itemId, brand, model }: QrCodeSectionProps) => {
                 <title>QR Label – ${brand} ${model}</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    @page { size: 62mm 80mm; margin: 4mm; }
+                    /* Remove margin fully from page to hide browser default header/footer */
+                    @page { 
+                        size: 62mm 62mm;
+                        margin: 0; 
+                    }
+                    html, body {
+                        width: 100%;
+                        height: 100%;
+                    }
                     body {
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        min-height: 100vh;
                         background: white;
+                        padding: 10mm;
                     }
                     .label {
                         text-align: center;
-                        padding: 16px;
-                        border: 2px solid #e5e5e5;
-                        border-radius: 12px;
-                        max-width: 240px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        width: 100%;
+                        height: 100%;
                     }
-                    .label svg { margin: 0 auto 12px; }
+                    .label svg { margin: 0 auto 10px; }
                     .id {
                         font-family: 'SF Mono', 'Fira Code', monospace;
-                        font-size: 18px;
+                        font-size: 16px;
                         font-weight: 700;
                         letter-spacing: 1px;
-                        margin-bottom: 6px;
+                        margin-bottom: 2px;
+                        color: #000;
                     }
-                    .brand { font-size: 14px; font-weight: 600; }
-                    .model { font-size: 12px; color: #888; }
+                    .brand { font-size: 14px; font-weight: 600; color: #000; }
+                    .model { font-size: 12px; color: #555; }
+                    
                     @media print {
-                        body { min-height: auto; }
-                        .label { border: 1.5px solid #ccc; page-break-inside: avoid; }
+                        html, body {
+                            width: 62mm;
+                            height: 62mm;
+                            overflow: hidden;
+                        }
+                        body { 
+                            align-items: center; 
+                            justify-content: center;
+                            padding: 2mm;
+                        }
                     }
                 </style>
             </head>

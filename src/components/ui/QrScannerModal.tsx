@@ -43,8 +43,15 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
                     { facingMode: 'environment' },
                     {
                         fps: 10,
-                        qrbox: { width: 220, height: 220 },
-                        aspectRatio: 1,
+                        // Responsive qrbox to prevent overflowing intrinsic view width on varying mobile screens
+                        qrbox: (viewfinderWidth, viewfinderHeight) => {
+                            const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                            const qrboxSize = Math.floor(minEdgeSize * 0.75); // 75% of container size
+                            return { width: qrboxSize, height: qrboxSize };
+                        },
+                        // Specify supported formats to speed up scanning
+                        formatsToSupport: [0], // 0 is Html5QrcodeSupportedFormats.QR_CODE
+                        // Removing aspectRatio constraint since forcing 1:1 can cause issues/stretching on iOS Safari
                     },
                     (decodedText) => {
                         // Extract short ID from scanned value
