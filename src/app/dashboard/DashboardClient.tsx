@@ -4,9 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Item, ItemStatus, Expense, CertificateProvider } from '../../types';
 import { generateId } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
+import { OrgRole } from '../../lib/roles';
 
 // Views
 import { LoginView } from '../../components/views/LoginView';
+import { OnboardingView } from '../../components/views/OnboardingView';
 import { DashboardView } from '../../components/views/DashboardView';
 import { InventoryView } from '../../components/views/InventoryView';
 import { AddItemView } from '../../components/views/AddItemView';
@@ -47,6 +49,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     const [dashboardStats, setDashboardStats] = useState<any>(null);
     const [certificateProviders, setCertificateProviders] = useState<CertificateProvider[]>([]);
     const [orgId, setOrgId] = useState<string | null>(initialOrgId);
+    const [userRole, setUserRole] = useState<OrgRole | null>(null);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(initialItems.length === PAGE_SIZE);
     const [totalCount, setTotalCount] = useState<number>(0);
@@ -68,25 +71,28 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             setUser(currentUser);
 
             if (currentUser) {
-                // Determine the view immediately
-                setView(prev => prev === 'login' ? 'dashboard' : prev);
-
-                // Fetch org membership in parallel
+                // Fetch org membership
                 if (supabase) {
-                    supabase
-                        .from('organization_members')
-                        .select('organization_id')
-                        .eq('user_id', currentUser.id)
-                        .maybeSingle()
-                        .then(({ data: member, error }) => {
-                            if (error) {
-                                console.error("DashboardClient: Error fetching organization membership:", error);
-                            }
-                            if (member) {
-                                setOrgId(member.organization_id);
-                            } else {
-                                console.log("DashboardClient: No organization membership found for user.");
-                            }
+                    Promise.resolve(supabase.rpc('check_and_accept_invitations'))
+                        .finally(() => {
+                            supabase
+                                .from('organization_members')
+                                .select('organization_id, role')
+                                .eq('user_id', currentUser.id)
+                                .maybeSingle()
+                                .then(({ data: member, error }) => {
+                                    if (error) {
+                                        console.error("DashboardClient: Error fetching organization membership:", error);
+                                    }
+                                    if (member && member.organization_id) {
+                                        setOrgId(member.organization_id);
+                                        setUserRole(member.role as OrgRole);
+                                        setView(prev => prev === 'login' ? 'dashboard' : prev);
+                                    } else {
+                                        console.log("DashboardClient: No organization membership found for user.");
+                                        setView('onboarding');
+                                    }
+                                });
                         });
                 }
             } else {
@@ -748,10 +754,17 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     };
 
     const renderContent = () => {
-        if (view === 'login') return <LoginView onLogin={(u) => { setUser(u); setView('dashboard'); }} />;
+        if (view === 'login') return <LoginView onLogin={(u) => { setUser(u); }} />;
+        if (view === 'onboarding') return <OnboardingView user={user} onComplete={(newOrgId) => {
+            setOrgId(newOrgId);
+            // Also need to fetch the newly created role, which should be owner
+            setUserRole('owner');
+            setView('dashboard');
+        }} />;
 
         if (view === 'dashboard') return (
             <DashboardView
+                userRole={userRole}
                 items={items}
                 onViewInventory={() => setView('inventory')}
                 onAddItem={() => setView('add-item')}
@@ -767,6 +780,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
         if (view === 'inventory') return (
             <InventoryView
+                userRole={userRole}
                 items={items}
                 onSelectItem={(id) => {
                     scrollPositionRef.current = window.scrollY;
@@ -885,9 +899,10 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
         if (view === 'settings') return (
             <SettingsView
+                userRole={userRole}
+                currentOrgId={orgId}
                 onBack={() => setView('dashboard')}
                 onExport={() => setView('export')}
-                currentOrgId={orgId}
             />
         );
 
@@ -941,6 +956,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
             {view !== 'login' && selectionMode !== 'bulk_sell' && view !== 'settings' && (
                 <Navigation
+                    userRole={userRole}
                     currentView={view}
                     onNavigate={(v) => {
                         if (v === 'add-item') {
