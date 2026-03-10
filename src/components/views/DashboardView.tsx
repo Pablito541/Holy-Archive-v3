@@ -10,7 +10,7 @@ import { FadeIn } from '../ui/FadeIn';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Card } from '../ui/Card';
 import { useTheme } from '../providers/ThemeProvider';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api/client';
 
 import { PullToRefresh } from '../ui/PullToRefresh';
 
@@ -55,28 +55,18 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
     });
     const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-    // Fetch dashboard stats from DB
+    // Fetch dashboard stats from API
     React.useEffect(() => {
         const fetchStats = async () => {
-            if (!currentOrgId || !supabase) return;
+            if (!currentOrgId) return;
 
             setIsLoadingStats(true);
             try {
-                // Call the new detailed RPC
-                const { data, error } = await supabase
-                    .rpc('get_detailed_dashboard_stats', {
-                        org_id: currentOrgId,
-                        filter_timeframe: timeframe,
-                        chart_grouping: chartGrouping
-                    });
+                const { data, error } = await api.getDashboardStats(timeframe, chartGrouping);
 
-                if (error) throw error;
+                if (error) throw new Error(error);
 
                 if (data) {
-                    // Start of Data Handling
-                    // Note: RPC returns JSON. Supabase might return it as data directly.
-                    // If it was RETURNS TABLE, it would be data[0]. 
-                    // Let's assume strict JSON object return.
                     const s = data as any;
 
                     setStats({
@@ -107,7 +97,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
         };
 
         fetchStats();
-    }, [timeframe, chartGrouping, currentOrgId, supabase]);
+    }, [timeframe, chartGrouping, currentOrgId]);
 
     // Derived display stats (Now just a passthrough from server stats)
     // We keep this variable name to minimize refactoring impact on the render section

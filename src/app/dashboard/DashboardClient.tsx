@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Item, ItemStatus, Expense, CertificateProvider } from '../../types';
 import { generateId } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
+import { api, mapDbItemToItem } from '../../lib/api/client';
 
 // Views
 import { LoginView } from '../../components/views/LoginView';
@@ -105,89 +106,39 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     };
 
     const loadData = async (pageToLoad: number = 0, reset: boolean = false, filterStatus?: ItemStatus) => {
-        if (!supabase || !user || !orgId) return;
+        if (!user || !orgId) return;
 
         const currentFilter = filterStatus || inventoryFilter;
 
         setIsLoading(true);
         try {
-            // Fetch stats if it's a reset (initial or refresh)
             if (reset) {
                 fetchStats();
             }
 
-            const from = pageToLoad * PAGE_SIZE;
-            const to = from + PAGE_SIZE - 1;
+            const { data: result, error: apiError } = await api.getItems({
+                status: currentFilter,
+                page: pageToLoad,
+                limit: PAGE_SIZE,
+            });
 
-            let query = supabase
-                .from('items')
-                .select('*, item_certificates(*, provider:certificate_providers(*))', { count: 'exact' })
-                .eq('organization_id', orgId)
-                .eq('status', currentFilter);
-
-            if (currentFilter === 'sold') {
-                query = query.order('sale_date', { ascending: false, nullsFirst: false });
-            } else {
-                query = query.order('created_at', { ascending: false });
+            if (apiError || !result) {
+                console.error('Error loading items:', apiError);
+                return;
             }
 
-            const { data, error, count } = await query.range(from, to);
+            const mappedItems = result.items.map(mapDbItemToItem);
+            setTotalCount(result.total);
 
-            if (data && !error) {
-                const mappedItems: Item[] = data.map((d: any) => ({
-                    id: d.id,
-                    brand: d.brand,
-                    model: d.model,
-                    category: d.category,
-                    condition: d.condition,
-                    status: d.status,
-                    purchasePriceEur: d.purchase_price_eur,
-                    purchaseDate: d.purchase_date,
-                    purchaseSource: d.purchase_source,
-                    salePriceEur: d.sale_price_eur,
-                    saleDate: d.sale_date,
-                    saleChannel: d.sale_channel,
-                    platformFeesEur: d.platform_fees_eur,
-                    shippingCostEur: d.shipping_cost_eur,
-                    reservedFor: d.reserved_for,
-                    reservedUntil: d.reserved_until,
-                    certificates: d.item_certificates?.map((c: any) => ({
-                        id: c.id,
-                        organization_id: c.organization_id,
-                        item_id: c.item_id,
-                        certificate_provider_id: c.certificate_provider_id,
-                        cost_eur: c.cost_eur,
-                        sale_price_eur: c.sale_price_eur,
-                        created_at: c.created_at,
-                        provider: c.provider
-                    })) || [],
-                    imageUrls: d.image_urls || [],
-                    notes: d.notes,
-                    createdAt: d.created_at
-                }));
-
-                // Update total count if available
-                if (count !== null) {
-                    setTotalCount(count);
-                }
-
-                if (reset) {
-                    setItems(mappedItems);
-                    // If we reset, hasMore is true if we have fewer items than total
-                    setHasMore(mappedItems.length < (count || 0));
-                } else {
-                    setItems(prev => {
-                        const newItems = [...prev, ...mappedItems];
-                        // Correctly set hasMore based on total count
-                        setHasMore(newItems.length < (count || totalCount));
-                        return newItems;
-                    });
-                }
-
-                // Fallback for hasMore if count logic fails (e.g. RLS preventing count)
-                if (count === null) {
-                    setHasMore(data.length === PAGE_SIZE);
-                }
+            if (reset) {
+                setItems(mappedItems);
+                setHasMore(result.hasMore);
+            } else {
+                setItems(prev => {
+                    const newItems = [...prev, ...mappedItems];
+                    setHasMore(newItems.length < result.total);
+                    return newItems;
+                });
             }
         } catch (e) {
             console.error('Error loading data:', e);
@@ -247,82 +198,30 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const handleCreateItem = async (data: Partial<Item>, newCertificate?: { providerId: string, costEur: number }) => {
         try {
-            const dbItem = {
-                user_id: user?.id,
+            const { data: inserted, error } = await api.createItem({
                 brand: data.brand || 'Unknown',
                 model: data.model || '',
                 category: data.category || 'bag',
                 condition: data.condition || 'good',
-                status: 'in_stock',
                 purchase_price_eur: data.purchasePriceEur || 0,
                 purchase_date: data.purchaseDate || new Date().toISOString(),
                 purchase_source: data.purchaseSource || '',
                 image_urls: data.imageUrls || [],
-                notes: data.notes || ''
-            };
+                notes: data.notes || '',
+                certificate: newCertificate ? {
+                    provider_id: newCertificate.providerId,
+                    cost_eur: newCertificate.costEur,
+                } : undefined,
+            });
 
-            if (supabase) {
-                const { data: inserted, error } = await supabase.from('items').insert(dbItem).select().single();
-
-                if (error) {
-                    showToast(`Fehler beim Erstellen: ${error.message}`, 'error');
-                    return;
-                }
-
-                if (inserted) {
-                    let newCertificates: any[] = [];
-                    // Insert certificate if provided
-                    if (newCertificate && orgId) {
-                        const { data: certInserted, error: certError } = await supabase.from('item_certificates').insert({
-                            organization_id: orgId,
-                            item_id: inserted.id,
-                            certificate_provider_id: newCertificate.providerId,
-                            cost_eur: newCertificate.costEur
-                        }).select().single();
-
-                        if (!certError && certInserted) {
-                            newCertificates.push({
-                                id: certInserted.id,
-                                organization_id: certInserted.organization_id,
-                                item_id: certInserted.item_id,
-                                certificate_provider_id: certInserted.certificate_provider_id,
-                                cost_eur: certInserted.cost_eur,
-                                sale_price_eur: certInserted.sale_price_eur,
-                                created_at: certInserted.created_at
-                            });
-                        } else if (certError) {
-                            console.error('Failed to create certificate:', certError);
-                        }
-                    }
-
-                    const newItem: Item = {
-                        id: inserted.id,
-                        brand: inserted.brand,
-                        model: inserted.model,
-                        category: inserted.category,
-                        condition: inserted.condition,
-                        status: inserted.status,
-                        purchasePriceEur: inserted.purchase_price_eur,
-                        purchaseDate: inserted.purchase_date,
-                        purchaseSource: inserted.purchase_source,
-                        salePriceEur: inserted.sale_price_eur,
-                        saleDate: inserted.sale_date,
-                        saleChannel: inserted.sale_channel,
-                        platformFeesEur: inserted.platform_fees_eur,
-                        shippingCostEur: inserted.shipping_cost_eur,
-                        reservedFor: inserted.reserved_for,
-                        reservedUntil: inserted.reserved_until,
-                        certificates: newCertificates,
-                        imageUrls: inserted.image_urls || [],
-                        notes: inserted.notes,
-                        createdAt: inserted.created_at
-                    };
-                    setItems(prev => [newItem, ...prev]);
-                    fetchStats();
-                    showToast('Artikel erfolgreich erstellt', 'success');
-                }
+            if (error || !inserted) {
+                showToast(`Fehler beim Erstellen: ${error}`, 'error');
+                return;
             }
 
+            setItems(prev => [mapDbItemToItem(inserted), ...prev]);
+            fetchStats();
+            showToast('Artikel erfolgreich erstellt', 'success');
             setView('inventory');
             setSelectionMode('view');
         } catch (e: any) {
@@ -332,22 +231,19 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const handleUpdateItem = async (id: string, data: Partial<Item>) => {
         try {
-            if (supabase) {
-                const dbUpdate = {
-                    brand: data.brand,
-                    model: data.model,
-                    category: data.category,
-                    condition: data.condition,
-                    purchase_price_eur: data.purchasePriceEur,
-                    purchase_date: data.purchaseDate,
-                    purchase_source: data.purchaseSource,
-                    image_urls: data.imageUrls,
-                    notes: data.notes
-                };
+            const { error } = await api.updateItem(id, {
+                brand: data.brand,
+                model: data.model,
+                category: data.category,
+                condition: data.condition,
+                purchase_price_eur: data.purchasePriceEur,
+                purchase_date: data.purchaseDate,
+                purchase_source: data.purchaseSource,
+                image_urls: data.imageUrls,
+                notes: data.notes,
+            });
 
-                const { error } = await supabase.from('items').update(dbUpdate).eq('id', id);
-                if (error) throw error;
-            }
+            if (error) throw new Error(error);
 
             setItems(prev => prev.map(item => item.id === id ? { ...item, ...data } : item));
             fetchStats();
@@ -360,94 +256,56 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const handleSellItem = async (id: string, saleData: any, certSalePrices?: Record<string, number>, standaloneCertificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[]) => {
         try {
-            if (!supabase) {
-                throw new Error('Supabase client not initialized');
-            }
-
-            const { error } = await supabase.from('items').update({
-                status: 'sold',
+            const { error: sellError } = await api.sellItem(id, {
                 sale_price_eur: saleData.salePriceEur,
                 sale_date: saleData.saleDate,
                 sale_channel: saleData.saleChannel,
                 platform_fees_eur: saleData.platformFeesEur,
-                shipping_cost_eur: saleData.shippingCostEur
-            }).eq('id', id);
+                shipping_cost_eur: saleData.shippingCostEur,
+                buyer: saleData.buyer,
+                cert_sale_prices: certSalePrices,
+            });
 
-            if (error) {
-                console.error('Supabase update error:', error);
-                throw error;
-            }
+            if (sellError) throw new Error(sellError);
 
-            if (certSalePrices && supabase) {
-                for (const [certId, price] of Object.entries(certSalePrices)) {
-                    const { error: certError } = await supabase.from('item_certificates')
-                        .update({ sale_price_eur: price })
-                        .eq('id', certId);
-
-                    if (certError) {
-                        console.error('Failed to update certificate sale price:', certError);
-                    }
-                }
-            }
-
-            // Create standalone certificate items if any
+            // Create standalone certificate items if any (still via direct Supabase for now — complex logic)
             const newCertItems: Item[] = [];
-            if (standaloneCertificates && standaloneCertificates.length > 0) {
+            if (standaloneCertificates && standaloneCertificates.length > 0 && supabase) {
                 for (const cert of standaloneCertificates) {
                     for (let i = 0; i < cert.quantity; i++) {
-                        const certItemData = {
-                            user_id: user?.id,
-                            organization_id: orgId,
-                            status: 'sold',
-                            category: 'other',
-                            condition: 'mint',
+                        const { data: inserted, error: certItemErr } = await api.createItem({
                             brand: cert.provider || 'Zertifikat',
                             model: 'Zertifikat',
+                            category: 'other',
+                            condition: 'mint',
                             purchase_price_eur: cert.costEur,
-                            sale_price_eur: cert.salePriceEur,
                             purchase_date: saleData.saleDate,
-                            sale_date: saleData.saleDate,
-                            sale_channel: saleData.saleChannel,
-                            buyer: saleData.buyer || null,
                             image_urls: (() => {
                                 const prov = certificateProviders.find(p => p.name === cert.provider);
                                 return prov?.image_url ? [prov.image_url] : [];
                             })(),
-                            created_at: new Date().toISOString(),
-                        };
+                        });
 
-                        const { data: insertedCert, error } = await supabase.from('items').insert([certItemData]).select().single();
-
-                        if (error) {
-                            console.error('Error creating standalone certificate item:', error);
-                            throw error;
-                        }
-
-                        if (insertedCert) {
-                            newCertItems.push({
-                                id: insertedCert.id,
-                                category: insertedCert.category,
-                                condition: insertedCert.condition,
-                                brand: insertedCert.brand,
-                                model: insertedCert.model,
-                                status: insertedCert.status,
-                                purchasePriceEur: insertedCert.purchase_price_eur,
-                                purchaseDate: insertedCert.purchase_date,
-                                purchaseSource: '',
-                                salePriceEur: insertedCert.sale_price_eur,
-                                saleDate: insertedCert.sale_date,
-                                saleChannel: insertedCert.sale_channel,
-                                buyer: insertedCert.buyer,
-                                notes: '',
-                                imageUrls: [],
-                                createdAt: insertedCert.created_at
+                        if (inserted) {
+                            // Mark as sold immediately
+                            await api.sellItem(inserted.id, {
+                                sale_price_eur: cert.salePriceEur,
+                                sale_date: saleData.saleDate,
+                                sale_channel: saleData.saleChannel,
+                                buyer: saleData.buyer,
                             });
+                            newCertItems.push(mapDbItemToItem({
+                                ...inserted,
+                                status: 'sold',
+                                sale_price_eur: cert.salePriceEur,
+                                sale_date: saleData.saleDate,
+                                sale_channel: saleData.saleChannel,
+                            }));
                         }
                     }
                 }
             }
 
-            // Only update local state and show success if DB update succeeded
             setItems(prev => {
                 const nextState = prev.map(item => {
                     if (item.id === id) {
@@ -489,8 +347,6 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const handleBulkSell = async (data: { salePriceEur: number; saleDate: string; saleChannel: string; platformFeesEur: number; shippingCostEur: number; buyer: string; certificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[] }) => {
         try {
-            if (!supabase) throw new Error('Supabase client not initialized');
-
             const selectedItems = items.filter(i => selectedItemIds.has(i.id));
             const count = selectedItems.length;
             if (count === 0) return;
@@ -505,24 +361,23 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             const shippingPerItem = Math.floor((data.shippingCostEur * 100) / count) / 100;
             const shippingRemainder = Math.round((data.shippingCostEur - shippingPerItem * count) * 100) / 100;
 
-            // Update each item in DB
+            // Sell each item via API
             for (let i = 0; i < selectedItems.length; i++) {
                 const item = selectedItems[i];
                 const isFirst = i === 0;
 
-                const { error } = await supabase.from('items').update({
-                    status: 'sold',
+                const { error } = await api.sellItem(item.id, {
                     sale_price_eur: isFirst ? pricePerItem + priceRemainder : pricePerItem,
                     sale_date: data.saleDate,
                     sale_channel: data.saleChannel,
                     platform_fees_eur: isFirst ? feesPerItem + feesRemainder : feesPerItem,
                     shipping_cost_eur: isFirst ? shippingPerItem + shippingRemainder : shippingPerItem,
-                    buyer: data.buyer || null
-                }).eq('id', item.id);
+                    buyer: data.buyer || undefined,
+                });
 
                 if (error) {
                     console.error(`Error selling item ${item.id}:`, error);
-                    throw error;
+                    throw new Error(error);
                 }
             }
 
@@ -531,54 +386,39 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             if (data.certificates && data.certificates.length > 0) {
                 for (const cert of data.certificates) {
                     for (let i = 0; i < cert.quantity; i++) {
-                        const certItemData = {
-                            user_id: user?.id,
-                            organization_id: orgId,
-                            status: 'sold',
-                            category: 'other',
-                            condition: 'mint',
+                        const { data: inserted, error: createErr } = await api.createItem({
                             brand: cert.provider || 'Zertifikat',
                             model: 'Zertifikat',
+                            category: 'other',
+                            condition: 'mint',
                             purchase_price_eur: cert.costEur,
-                            sale_price_eur: cert.salePriceEur,
                             purchase_date: data.saleDate,
-                            sale_date: data.saleDate,
-                            sale_channel: data.saleChannel,
-                            buyer: data.buyer || null,
                             image_urls: (() => {
                                 const prov = certificateProviders.find(p => p.name === cert.provider);
                                 return prov?.image_url ? [prov.image_url] : [];
                             })(),
-                            created_at: new Date().toISOString(),
-                        };
+                        });
 
-                        const { data: insertedCert, error } = await supabase.from('items').insert([certItemData]).select().single();
-
-                        if (error) {
-                            console.error('Error creating certificate item:', error);
-                            throw error;
+                        if (createErr || !inserted) {
+                            console.error('Error creating certificate item:', createErr);
+                            throw new Error(createErr || 'Failed to create certificate item');
                         }
 
-                        if (insertedCert) {
-                            newCertItems.push({
-                                id: insertedCert.id,
-                                category: insertedCert.category,
-                                condition: insertedCert.condition,
-                                brand: insertedCert.brand,
-                                model: insertedCert.model,
-                                status: insertedCert.status,
-                                purchasePriceEur: insertedCert.purchase_price_eur,
-                                purchaseDate: insertedCert.purchase_date,
-                                purchaseSource: '',
-                                salePriceEur: insertedCert.sale_price_eur,
-                                saleDate: insertedCert.sale_date,
-                                saleChannel: insertedCert.sale_channel,
-                                buyer: insertedCert.buyer,
-                                notes: '',
-                                imageUrls: [],
-                                createdAt: insertedCert.created_at
-                            });
-                        }
+                        // Mark as sold immediately
+                        await api.sellItem(inserted.id, {
+                            sale_price_eur: cert.salePriceEur,
+                            sale_date: data.saleDate,
+                            sale_channel: data.saleChannel,
+                            buyer: data.buyer || undefined,
+                        });
+
+                        newCertItems.push(mapDbItemToItem({
+                            ...inserted,
+                            status: 'sold',
+                            sale_price_eur: cert.salePriceEur,
+                            sale_date: data.saleDate,
+                            sale_channel: data.saleChannel,
+                        }));
                     }
                 }
             }
@@ -621,10 +461,8 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     const handleDeleteItem = async (id: string) => {
         if (!confirm('Wirklich löschen?')) return;
         try {
-            if (supabase) {
-                const { error } = await supabase.from('items').delete().eq('id', id);
-                if (error) throw error;
-            }
+            const { error } = await api.deleteItem(id);
+            if (error) throw new Error(error);
             setItems(prev => prev.filter(i => i.id !== id));
             fetchStats();
             showToast('Artikel gelöscht', 'success');
@@ -639,14 +477,12 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
             const reservedUntil = new Date();
             reservedUntil.setDate(reservedUntil.getDate() + days);
 
-            if (supabase) {
-                const { error } = await supabase.from('items').update({
-                    status: 'reserved',
-                    reserved_for: name,
-                    reserved_until: reservedUntil.toISOString()
-                }).eq('id', id);
-                if (error) throw error;
-            }
+            const { error } = await api.updateItem(id, {
+                status: 'reserved',
+                reserved_for: name,
+                reserved_until: reservedUntil.toISOString(),
+            });
+            if (error) throw new Error(error);
 
             setItems(prev => prev.map(item => item.id === id ? {
                 ...item,
@@ -662,14 +498,12 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const handleCancelReservation = async (id: string) => {
         try {
-            if (supabase) {
-                const { error } = await supabase.from('items').update({
-                    status: 'in_stock',
-                    reserved_for: null,
-                    reserved_until: null
-                }).eq('id', id);
-                if (error) throw error;
-            }
+            const { error } = await api.updateItem(id, {
+                status: 'in_stock',
+                reserved_for: null,
+                reserved_until: null,
+            });
+            if (error) throw new Error(error);
 
             setItems(prev => prev.map(item => item.id === id ? {
                 ...item,
@@ -687,17 +521,15 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         if (!confirm('Verkauf wirklich stornieren? Der Artikel wird wieder als "Im Lager" markiert.')) return;
 
         try {
-            if (supabase) {
-                const { error } = await supabase.from('items').update({
-                    status: 'in_stock',
-                    sale_price_eur: null,
-                    sale_date: null,
-                    sale_channel: null,
-                    platform_fees_eur: null,
-                    shipping_cost_eur: null
-                }).eq('id', id);
-                if (error) throw error;
-            }
+            const { error } = await api.updateItem(id, {
+                status: 'in_stock',
+                sale_price_eur: null,
+                sale_date: null,
+                sale_channel: null,
+                platform_fees_eur: null,
+                shipping_cost_eur: null,
+            });
+            if (error) throw new Error(error);
 
             setItems(prev => prev.map(item => item.id === id ? {
                 ...item,
@@ -708,7 +540,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                 platformFeesEur: undefined,
                 shippingCostEur: undefined
             } : item));
-            fetchStats(); // Update stats since revenue/profit changed
+            fetchStats();
             showToast('Verkauf storniert', 'success');
         } catch (e) {
             console.error('Error canceling sale:', e);
@@ -718,10 +550,9 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     const handleDeleteExpense = async (expenseId: string) => {
         if (!confirm('Ausgabe wirklich löschen?')) return;
-        if (!supabase || !orgId) return;
         try {
-            const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
-            if (error) throw error;
+            const { error } = await api.deleteExpense(expenseId);
+            if (error) throw new Error(error);
             showToast('Ausgabe erfolgreich gelöscht', 'success');
             setView('finances');
             setSelectedExpense(null);

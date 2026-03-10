@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { generateId } from '../../lib/utils';
+import { api, mapDbItemToItem } from '../../lib/api/client';
 import { ArrowLeft, Edit2, Camera, MapPin, Banknote } from 'lucide-react';
 import { FadeIn } from '../ui/FadeIn';
 import { useToast } from '../ui/Toast';
@@ -28,7 +27,7 @@ export const SellCertificateView = ({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!currentOrgId || !supabase) {
+        if (!currentOrgId) {
             showToast('Zertifikat konnte nicht gespeichert werden (Keine Organisation)', 'error');
             return;
         }
@@ -39,52 +38,43 @@ export const SellCertificateView = ({
         }
 
         setIsSubmitting(true);
-        const itemId = generateId();
-
-        const newItem = {
-            id: itemId,
-            organization_id: currentOrgId,
-            brand: provider,
-            model: 'Zertifikat',
-            category: 'other',
-            condition: 'mint', // Mint as requested
-            status: 'sold',
-            purchase_price_eur: parseFloat(costEur),
-            purchase_date: saleDate, // Using sale date as purchase date for sync
-            purchase_source: 'Zertifikat Anbieter',
-            sale_price_eur: parseFloat(salePriceEur),
-            sale_date: saleDate,
-            sale_channel: saleChannel,
-            buyer: buyer,
-            notes: 'Unabhängiges Zertifikat',
-            created_at: new Date().toISOString()
-        };
 
         try {
-            const { error } = await supabase.from('items').insert([newItem]);
-            if (error) throw error;
+            // Create item via API
+            const { data: inserted, error: createErr } = await api.createItem({
+                brand: provider,
+                model: 'Zertifikat',
+                category: 'other',
+                condition: 'mint',
+                purchase_price_eur: parseFloat(costEur),
+                purchase_date: saleDate,
+                purchase_source: 'Zertifikat Anbieter',
+                notes: 'Unabhängiges Zertifikat',
+            });
+
+            if (createErr || !inserted) throw new Error(createErr || 'Failed to create item');
+
+            // Mark as sold immediately via API
+            const { error: sellErr } = await api.sellItem(inserted.id, {
+                sale_price_eur: parseFloat(salePriceEur),
+                sale_date: saleDate,
+                sale_channel: saleChannel,
+                buyer: buyer,
+            });
+
+            if (sellErr) throw new Error(sellErr);
 
             showToast('Zertifikat erfolgreich in Finanzen erfasst!', 'success');
 
-            // Map back to TypeScript Item type to update local state without full reload
-            onSave({
-                id: itemId,
-                brand: newItem.brand,
-                model: newItem.model,
-                category: newItem.category,
-                condition: newItem.condition,
-                status: newItem.status,
-                purchasePriceEur: newItem.purchase_price_eur,
-                purchaseDate: newItem.purchase_date,
-                purchaseSource: newItem.purchase_source,
-                salePriceEur: newItem.sale_price_eur,
-                saleDate: newItem.sale_date,
-                saleChannel: newItem.sale_channel,
-                buyer: newItem.buyer,
-                notes: newItem.notes,
-                imageUrls: [],
-                createdAt: newItem.created_at
-            });
+            // Map back to TypeScript Item type to update local state
+            onSave(mapDbItemToItem({
+                ...inserted,
+                status: 'sold',
+                sale_price_eur: parseFloat(salePriceEur),
+                sale_date: saleDate,
+                sale_channel: saleChannel,
+                buyer: buyer,
+            }));
         } catch (error: any) {
             console.error('Error saving certificate sale:', error);
             showToast('Fehler beim Speichern', 'error');
