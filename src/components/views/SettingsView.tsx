@@ -35,6 +35,7 @@ const CertificateProviderForm = ({
     } = useImageUpload({
         initialImageUrls: initialData?.image_url ? [initialData.image_url] : [],
         isBulkMode: false,
+        orgId: currentOrgId
     });
 
     const handleSave = async () => {
