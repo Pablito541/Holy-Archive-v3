@@ -5,6 +5,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
+import Link from 'next/link';
 
 export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
     const [email, setEmail] = useState('');
@@ -77,7 +78,20 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                     <Button type="submit" className="w-full mt-8" disabled={loading}>
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Anmelden'}
                     </Button>
+
+                    <div className="text-center mt-3">
+                        <Link href="/reset-password" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                            Passwort vergessen?
+                        </Link>
+                    </div>
                 </form>
+
+                <p className="mt-8 text-sm text-stone-500">
+                    Noch keinen Account?{' '}
+                    <Link href="/signup" className="text-stone-900 font-medium hover:underline">
+                        Registrieren
+                    </Link>
+                </p>
             </FadeIn>
         </div>
     );

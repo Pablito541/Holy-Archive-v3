@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { createClient } from '../../lib/supabase-server';
 import DashboardClient from './DashboardClient';
 import { Item } from '../../types';
@@ -75,11 +76,13 @@ export default async function DashboardPage() {
     }
 
     return (
-      <DashboardClient
-        initialUser={user}
-        initialOrgId={initialOrgId}
-        initialItems={initialItems}
-      />
+      <Suspense>
+        <DashboardClient
+          initialUser={user}
+          initialOrgId={initialOrgId}
+          initialItems={initialItems}
+        />
+      </Suspense>
     );
   } catch (error: any) {
     console.error("DashboardPage: Unhandled exception:", error);

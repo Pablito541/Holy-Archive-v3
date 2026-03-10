@@ -21,6 +21,7 @@ export const Navigation = ({ currentView, onNavigate }: { currentView: string, o
                             return (
                                 <button
                                     key={tab.id}
+                                    data-tour="action"
                                     onClick={() => onNavigate('add-item')}
                                     className="bg-stone-900 dark:bg-zinc-50 text-white dark:text-zinc-900 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all -my-1.5"
                                 >
@@ -32,6 +33,7 @@ export const Navigation = ({ currentView, onNavigate }: { currentView: string, o
                         return (
                             <button
                                 key={tab.id}
+                                data-tour={tab.id}
                                 onClick={() => onNavigate(tab.id)}
                                 className={`flex flex-col items-center justify-center w-12 transition-all duration-300 ${isActive ? 'text-stone-900 dark:text-zinc-50 scale-110' : 'hover:text-stone-600 dark:hover:text-zinc-300'}`}
                             >
