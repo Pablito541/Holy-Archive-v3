@@ -7,13 +7,15 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
 import { useImageUpload } from '../../hooks/useImageUpload';
 
+interface OnboardingViewProps {
+    user: any;
+    onComplete: (orgId: string) => void;
+}
+
 export const OnboardingView = ({
     user,
     onComplete
-}: {
-    user: any;
-    onComplete: (orgId: string) => void;
-}) => {
+}: OnboardingViewProps) => {
     const [orgName, setOrgName] = useState('');
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
@@ -56,7 +58,7 @@ export const OnboardingView = ({
             // 2. Call RPC to create org
             const { data: orgId, error } = await supabase.rpc('create_organization_for_user', {
                 p_org_name: orgName,
-                p_user_id: user.id
+                p_user_id: user?.id
             });
 
             if (error) throw error;
@@ -75,9 +77,9 @@ export const OnboardingView = ({
             showToast('Willkommen bei Holy Archive!', 'success');
             onComplete(orgId);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("OnboardingView: Error:", err);
-            showToast(`Fehler beim Erstellen der Organisation: ${err.message}`, "error");
+            showToast(`Fehler beim Erstellen der Organisation: ${(err as any).message}`, "error");
             setLoading(false);
         }
     };
@@ -97,7 +99,7 @@ export const OnboardingView = ({
                         label="Firmenname"
                         placeholder="Meine Vintage Boutique"
                         value={orgName}
-                        onChange={(e: any) => setOrgName(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrgName(e.target.value)}
                         required
                     />
 

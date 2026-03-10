@@ -1,7 +1,8 @@
 import React from 'react';
 import { TrendingUp, Package, Plus, Wallet } from 'lucide-react';
+import { OrgRole, canCreateItems } from '../../lib/roles';
 
-export const Navigation = ({ currentView, onNavigate }: { currentView: string, onNavigate: (view: string) => void }) => {
+export const Navigation = ({ userRole, currentView, onNavigate }: { userRole?: OrgRole | null, currentView: string, onNavigate: (view: string) => void }) => {
     const tabs = [
         { id: 'dashboard', icon: TrendingUp, label: 'Home' },
         { id: 'inventory', icon: Package, label: 'Lager' },
@@ -18,6 +19,7 @@ export const Navigation = ({ currentView, onNavigate }: { currentView: string, o
                         const isActive = currentView === tab.id;
 
                         if (tab.special) {
+                            if (!canCreateItems(userRole)) return null;
                             return (
                                 <button
                                     key={tab.id}

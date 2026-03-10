@@ -49,7 +49,7 @@ export default async function DashboardPage() {
         }
 
         if (data) {
-          initialItems = data.map((d: any) => ({
+          initialItems = data.map((d: Record<string, any>) => ({
             id: d.id,
             brand: d.brand,
             model: d.model,

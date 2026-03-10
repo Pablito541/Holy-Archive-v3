@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
 import { ExpenseCategory, Expense } from '../../types';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { validatePrice, validateTextLength, validateDateNotFuture, ValidationError } from '../../lib/validation';
 
 interface AddExpenseViewProps {
     currentOrgId: string | null;
@@ -60,7 +61,7 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
                         setSelectedCategoryId(data[0].id);
                     }
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Error fetching categories:', err);
             } finally {
                 setLoadingCategories(false);
@@ -73,9 +74,19 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
         if (!currentOrgId || !supabase) return;
 
         const amount = parseFloat(amountStr.replace(',', '.'));
-        if (isNaN(amount) || amount <= 0) {
-            showToast('Bitte einen gültigen Betrag eingeben.', 'error');
-            return;
+        try {
+            validatePrice(amount, 'Betrag');
+            validateTextLength(description, 2000, 'Beschreibung');
+            validateDateNotFuture(date, 'Datum');
+
+            if (isNaN(amount) || amount <= 0) {
+                throw new ValidationError('Bitte einen gültigen positiven Betrag eingeben.');
+            }
+        } catch (error) {
+            if (error instanceof ValidationError || error instanceof Error) {
+                showToast(error.message, 'error');
+                return;
+            }
         }
 
         if (!selectedCategoryId) {

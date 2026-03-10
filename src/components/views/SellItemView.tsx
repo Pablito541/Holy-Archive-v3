@@ -8,6 +8,7 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { CertificateProvider } from '../../types';
+import { validatePrice, validateDateNotFuture, ValidationError } from '../../lib/validation';
 
 export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCancel }: { item: Item, certificateProviders?: CertificateProvider[], onConfirm: (data: Partial<Item>, certSalePrices?: Record<string, number>, standaloneCertificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[]) => void, onCancel: () => void }) => {
     const [formData, setFormData] = useState({
@@ -38,7 +39,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
         setCertificates(certificates.filter(c => c.id !== id));
     };
 
-    const updateCertificate = (id: string, field: string, value: any) => {
+    const updateCertificate = (id: string, field: string, value: string | number) => {
         setCertificates(certificates.map(c => c.id === id ? { ...c, [field]: value } : c));
     };
 
@@ -56,6 +57,22 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        try {
+            validatePrice(formData.salePriceEur, 'Verkaufspreis');
+            validatePrice(formData.platformFeesEur, 'Plattformgebühren');
+            validatePrice(formData.shippingCostEur, 'Versandkosten');
+            validateDateNotFuture(formData.saleDate, 'Verkaufsdatum');
+
+            Object.values(certSalePrices).forEach(price => validatePrice(price, 'Zertifikat Verkaufspreis'));
+            certificates.forEach(cert => validatePrice(cert.salePriceEur, 'Zertifikat Verkaufspreis'));
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                alert(error.message);
+                return;
+            }
+        }
+
         const formattedCerts = certificates.map(c => {
             const prov = certificateProviders.find(p => p.id === c.providerId);
             return {
@@ -96,7 +113,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                         inputMode="decimal"
                         step="0.01"
                         value={formData.salePriceEur === 0 ? '' : formData.salePriceEur}
-                        onChange={(e: any) => setFormData(p => ({ ...p, salePriceEur: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, salePriceEur: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                         required
                         autoFocus
                     />
@@ -105,7 +122,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                         label="Verkaufskanal"
                         options={SALES_CHANNELS.map(channel => ({ value: channel, label: channel }))}
                         value={formData.saleChannel}
-                        onChange={(e: any) => setFormData(p => ({ ...p, saleChannel: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, saleChannel: e.target.value }))}
                     />
 
                     <div className="grid grid-cols-2 gap-4">
@@ -115,7 +132,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                             inputMode="decimal"
                             step="0.01"
                             value={formData.platformFeesEur === 0 ? '' : formData.platformFeesEur}
-                            onChange={(e: any) => setFormData(p => ({ ...p, platformFeesEur: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, platformFeesEur: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                         />
                         <Input
                             label="Versand (€)"
@@ -123,7 +140,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                             inputMode="decimal"
                             step="0.01"
                             value={formData.shippingCostEur === 0 ? '' : formData.shippingCostEur}
-                            onChange={(e: any) => setFormData(p => ({ ...p, shippingCostEur: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, shippingCostEur: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                         />
                     </div>
 
@@ -131,7 +148,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                         label="Verkaufsdatum"
                         type="date"
                         value={formData.saleDate}
-                        onChange={(e: any) => setFormData(p => ({ ...p, saleDate: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, saleDate: e.target.value }))}
                     />
 
                     {/* Certificate Sale Prices */}
@@ -147,7 +164,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                                         inputMode="decimal"
                                         step="0.01"
                                         value={certSalePrices[cert.id] === 0 ? '' : certSalePrices[cert.id]}
-                                        onChange={(e: any) => setCertSalePrices(p => ({ ...p, [cert.id]: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setCertSalePrices(p => ({ ...p, [cert.id]: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                                     />
                                 ))}
                             </div>
@@ -193,7 +210,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                                             ...certificateProviders.map(p => ({ value: p.id, label: p.name }))
                                         ]}
                                         value={cert.providerId}
-                                        onChange={(e: any) => updateCertificate(cert.id, 'providerId', e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => updateCertificate(cert.id, 'providerId', e.target.value)}
                                     />
                                     <Input
                                         label="Verkaufspreis (€)"
@@ -201,7 +218,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
                                         step="0.01"
                                         placeholder="z.B. 25 €"
                                         value={cert.salePriceEur === 0 ? '' : cert.salePriceEur}
-                                        onChange={(e: any) => updateCertificate(cert.id, 'salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => updateCertificate(cert.id, 'salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                     />
                                 </div>
                             </div>

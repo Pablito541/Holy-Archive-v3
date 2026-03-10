@@ -4,7 +4,7 @@ import { SalesChart } from '../ui/SalesChart';
 import { ChannelModal } from './dashboard/ChannelModal';
 import { ChannelsOverviewModal } from './dashboard/ChannelsOverviewModal';
 import { AnalysisModal } from './dashboard/AnalysisModal';
-import { Item } from '../../types';
+import { Item, ChannelData, BrandStats, MonthlyData } from '../../types';
 import { formatCurrency } from '../../lib/utils';
 import { FadeIn } from '../ui/FadeIn';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
@@ -13,15 +13,16 @@ import { useTheme } from '../providers/ThemeProvider';
 import { supabase } from '../../lib/supabase';
 
 import { PullToRefresh } from '../ui/PullToRefresh';
+import { OrgRole } from '../../lib/roles';
 
-export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, onLogout, onRefresh, serverStats, currentUser, currentOrgId, onOpenSettings }: {
+export const DashboardView = ({ userRole, items, onViewInventory, onAddItem, userEmail, onLogout, onRefresh, currentUser, currentOrgId, onOpenSettings }: {
+    userRole?: OrgRole | null,
     items: Item[],
     onViewInventory: () => void,
     onAddItem: () => void,
     userEmail?: string,
     onLogout: () => void,
     onRefresh: () => Promise<void>,
-    serverStats?: any,
     currentUser?: any,
     currentOrgId?: string | null,
     onOpenSettings: () => void
@@ -36,22 +37,36 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
     const { theme, setTheme } = useTheme();
 
     // Server-side stats state
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<{
+        totalProfit: number;
+        totalRevenue: number;
+        totalSales: number;
+        totalExpenses: number;
+        averageMargin: number;
+        inventoryValue: number;
+        stockCount: number;
+        totalBrands: number;
+        totalChannels: number;
+        channels: ChannelData[];
+        topBrands: BrandStats[];
+        bestMarginBrand: BrandStats | null;
+        highestProfitBrand: BrandStats | null;
+        monthlyData: MonthlyData[];
+    }>({
         totalProfit: 0,
         totalRevenue: 0,
         totalSales: 0,
         totalExpenses: 0,
         averageMargin: 0,
-        inventoryValue: 0, // Added
-        stockCount: 0, // Added
+        inventoryValue: 0,
+        stockCount: 0,
         totalBrands: 0,
         totalChannels: 0,
-        // Detailed structures
-        channels: [] as any[],
-        topBrands: [] as any[],
-        bestMarginBrand: null as any,
-        highestProfitBrand: null as any,
-        monthlyData: [] as any[]
+        channels: [],
+        topBrands: [],
+        bestMarginBrand: null,
+        highestProfitBrand: null,
+        monthlyData: []
     });
     const [isLoadingStats, setIsLoadingStats] = useState(true);
 
@@ -77,7 +92,10 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                     // Note: RPC returns JSON. Supabase might return it as data directly.
                     // If it was RETURNS TABLE, it would be data[0]. 
                     // Let's assume strict JSON object return.
-                    const s = data as any;
+                    const s = data as Record<string, unknown>;
+
+                    const topBrands = (s.topBrands as BrandStats[] | undefined) || [];
+                    const channels = (s.channels as ChannelData[] | undefined) || [];
 
                     setStats({
                         totalProfit: Number(s.totalProfit) || 0,
@@ -89,14 +107,14 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                         inventoryValue: Number(s.inventoryValue) || 0,
                         stockCount: Number(s.stockCount) || 0,
 
-                        totalBrands: s.topBrands ? s.topBrands.length : 0,
-                        totalChannels: s.channels ? s.channels.length : 0,
+                        totalBrands: topBrands.length,
+                        totalChannels: channels.length,
 
-                        channels: s.channels || [],
-                        topBrands: s.topBrands || [],
-                        bestMarginBrand: s.bestMarginBrand || null,
-                        highestProfitBrand: s.highestProfitBrand || null,
-                        monthlyData: s.monthlyData || []
+                        channels,
+                        topBrands,
+                        bestMarginBrand: (s.bestMarginBrand as BrandStats | null) || null,
+                        highestProfitBrand: (s.highestProfitBrand as BrandStats | null) || null,
+                        monthlyData: (s.monthlyData as MonthlyData[] | undefined) || []
                     });
                 }
             } catch (err) {
@@ -223,7 +241,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                             <div className="relative">
                                 <select
                                     value={timeframe}
-                                    onChange={(e) => setTimeframe(e.target.value as any)}
+                                    onChange={(e) => setTimeframe(e.target.value as typeof timeframe)}
                                     className="appearance-none bg-stone-100 dark:bg-zinc-800 border border-transparent hover:border-stone-200 dark:hover:border-zinc-700 text-stone-700 dark:text-zinc-300 text-sm font-bold py-2 pl-4 pr-10 rounded-xl outline-none transition-colors cursor-pointer shadow-sm"
                                 >
                                     <option value="month">Dieser Monat</option>
@@ -406,7 +424,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                     <div className="relative">
                                         <select
                                             value={chartGrouping}
-                                            onChange={(e) => setChartGrouping(e.target.value as any)}
+                                            onChange={(e) => setChartGrouping(e.target.value as typeof chartGrouping)}
                                             className="appearance-none bg-stone-100 dark:bg-zinc-800 border border-transparent hover:border-stone-200 dark:hover:border-zinc-700 text-stone-600 dark:text-zinc-400 text-xs font-semibold py-1.5 pl-3 pr-8 rounded-lg outline-none transition-colors cursor-pointer"
                                         >
                                             <option value="day">Tage</option>
@@ -439,7 +457,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                     </div>
                                 </button>
                                 <div className="space-y-4">
-                                    {displayStats.channels.map((c: any, i: number) => (
+                                    {displayStats.channels.map((c: ChannelData, i: number) => (
                                         <div
                                             key={c.channel}
                                             className="w-full text-left relative"

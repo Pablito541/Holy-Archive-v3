@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { Item } from '../../types';
 import { generateId } from '../../lib/utils';
 import { ArrowLeft, Edit2, Camera, MapPin, Banknote } from 'lucide-react';
 import { FadeIn } from '../ui/FadeIn';
@@ -10,7 +11,7 @@ export const SellCertificateView = ({
     onCancel,
     currentOrgId
 }: {
-    onSave: (item: any) => void;
+    onSave: (item: Item) => void;
     onCancel: () => void;
     currentOrgId: string | null;
 }) => {
@@ -71,9 +72,9 @@ export const SellCertificateView = ({
                 id: itemId,
                 brand: newItem.brand,
                 model: newItem.model,
-                category: newItem.category,
-                condition: newItem.condition,
-                status: newItem.status,
+                category: newItem.category as any,
+                condition: newItem.condition as any,
+                status: newItem.status as any,
                 purchasePriceEur: newItem.purchase_price_eur,
                 purchaseDate: newItem.purchase_date,
                 purchaseSource: newItem.purchase_source,
@@ -85,7 +86,7 @@ export const SellCertificateView = ({
                 imageUrls: [],
                 createdAt: newItem.created_at
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error saving certificate sale:', error);
             showToast('Fehler beim Speichern', 'error');
         } finally {

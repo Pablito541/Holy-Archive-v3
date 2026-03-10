@@ -1,18 +1,18 @@
 import React from 'react';
 import { Store, ArrowRight, Package } from 'lucide-react';
-import { Item } from '../../../types';
+import { Item, ChannelData } from '../../../types';
 import { formatCurrency } from '../../../lib/utils';
 
 interface ChannelModalProps {
     channel: string;
     onClose: () => void;
     items: Item[];
-    channelStats: any[]; // Using any[] to match existing structure, could be typed better
+    channelStats: ChannelData[];
 }
 
 export const ChannelModal: React.FC<ChannelModalProps> = ({ channel, onClose, items, channelStats }) => {
     const channelItems = items.filter(i => i.saleChannel === channel && i.status === 'sold');
-    const channelStat = channelStats.find((c: any) => c.channel === channel);
+    const channelStat = channelStats.find((c: ChannelData) => c.channel === channel);
     const margin = channelStat ? (channelStat.profit / channelStat.revenue) * 100 : 0;
 
     return (

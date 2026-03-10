@@ -8,6 +8,8 @@ import { supabase } from '../../lib/supabase';
 import { CertificateProvider, ExpenseCategory } from '../../types';
 import { formatCurrency } from '../../lib/utils';
 import { useImageUpload } from '../../hooks/useImageUpload';
+import { OrgRole, canManageMembers, canManageSettings } from '../../lib/roles';
+import { TeamSettings } from './settings/TeamSettings';
 
 const CertificateProviderForm = ({
     initialData,
@@ -136,12 +138,13 @@ const CertificateProviderForm = ({
 };
 
 interface SettingsViewProps {
+    userRole?: OrgRole | null;
     onBack: () => void;
     onExport: () => void;
     currentOrgId: string | null;
 }
 
-export const SettingsView = ({ onBack, onExport, currentOrgId }: SettingsViewProps) => {
+export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: SettingsViewProps) => {
     const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
 
@@ -296,6 +299,11 @@ export const SettingsView = ({ onBack, onExport, currentOrgId }: SettingsViewPro
 
             <div className="space-y-6">
 
+                {/* Team Section */}
+                {currentOrgId && (
+                    <TeamSettings currentOrgId={currentOrgId} userRole={userRole} />
+                )}
+
                 {/* Export Section */}
                 <section>
                     <h2 className="text-xs font-bold text-stone-400 dark:text-zinc-500 tracking-wider uppercase ml-1 mb-3">Export & Backups</h2>
@@ -325,12 +333,14 @@ export const SettingsView = ({ onBack, onExport, currentOrgId }: SettingsViewPro
                         <h2 className="text-sm font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                             <Building2 className="w-4 h-4" /> Zertifikate
                         </h2>
-                        <button
-                            onClick={() => { setIsAddingCert(true); setEditingCertId(null); setCertForm({ name: '', unitCost: '' }); }}
-                            className="bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-50 p-1.5 rounded-lg active:scale-95 transition-transform"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
+                        {canManageSettings(userRole) && (
+                            <button
+                                onClick={() => { setIsAddingCert(true); setEditingCertId(null); setCertForm({ name: '', unitCost: '' }); }}
+                                className="bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-50 p-1.5 rounded-lg active:scale-95 transition-transform"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
 
                     <Card className="overflow-hidden divide-y divide-stone-100 dark:divide-zinc-800">
@@ -372,18 +382,22 @@ export const SettingsView = ({ onBack, onExport, currentOrgId }: SettingsViewPro
                                             </div>
                                         </div>
                                         <div className="flex gap-1 ml-2">
-                                            <button
-                                                onClick={() => { setEditingCertId(cert.id); }}
-                                                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteCertificate(cert.id, cert.name)}
-                                                className="p-2 text-red-400 hover:text-red-500 transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {canManageSettings(userRole) && (
+                                                <>
+                                                    <button
+                                                        onClick={() => { setEditingCertId(cert.id); }}
+                                                        className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteCertificate(cert.id, cert.name)}
+                                                        className="p-2 text-red-400 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -412,12 +426,14 @@ export const SettingsView = ({ onBack, onExport, currentOrgId }: SettingsViewPro
                         <h2 className="text-sm font-bold text-stone-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                             <Receipt className="w-4 h-4" /> Ausgaben-Kategorien
                         </h2>
-                        <button
-                            onClick={() => { setIsAddingExpense(true); setEditingExpenseId(null); setExpenseForm({ name: '' }); }}
-                            className="bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-50 p-1.5 rounded-lg active:scale-95 transition-transform"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
+                        {canManageSettings(userRole) && (
+                            <button
+                                onClick={() => { setIsAddingExpense(true); setEditingExpenseId(null); setExpenseForm({ name: '' }); }}
+                                className="bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-50 p-1.5 rounded-lg active:scale-95 transition-transform"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
 
                     <Card className="overflow-hidden divide-y divide-stone-100 dark:divide-zinc-800">
@@ -447,18 +463,22 @@ export const SettingsView = ({ onBack, onExport, currentOrgId }: SettingsViewPro
                                     <>
                                         <span className="font-bold text-stone-900 dark:text-zinc-50">{expense.name}</span>
                                         <div className="flex gap-1 ml-2">
-                                            <button
-                                                onClick={() => { setEditingExpenseId(expense.id); setExpenseForm({ name: expense.name }); }}
-                                                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteExpense(expense.id, expense.name)}
-                                                className="p-2 text-red-400 hover:text-red-500 transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {canManageSettings(userRole) && (
+                                                <>
+                                                    <button
+                                                        onClick={() => { setEditingExpenseId(expense.id); setExpenseForm({ name: expense.name }); }}
+                                                        className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteExpense(expense.id, expense.name)}
+                                                        className="p-2 text-red-400 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </>
                                 )}

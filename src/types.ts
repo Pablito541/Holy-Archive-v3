@@ -29,6 +29,10 @@ export interface Item {
     imageUrls: string[];
     notes: string;
     createdAt: string;
+
+    // Virtual fields for certificate display
+    isCertificate?: boolean;
+    parentId?: string;
 }
 
 export interface CertificateProvider {
@@ -71,4 +75,42 @@ export interface ItemCertificate {
 
     // Optional relation payload when joining
     provider?: CertificateProvider;
+}
+
+export interface ChannelData {
+    channel: string;
+    count: number;
+    revenue: number;
+    profit: number;
+}
+
+export interface BrandStats {
+    brand: string;
+    revenue: number;
+    profit: number;
+    sales: number;
+}
+
+export interface MonthlyData {
+    period: string;
+    revenue: number;
+    profit: number;
+    expenses: number;
+}
+
+export interface DashboardStats {
+    totalProfit: number;
+    totalRevenue: number;
+    totalSales: number;
+    totalExpenses: number;
+    averageMargin: number;
+    inventoryValue: number;
+    stockCount: number;
+    totalBrands: number;
+    totalChannels: number;
+    channels: ChannelData[];
+    topBrands: BrandStats[];
+    bestMarginBrand: BrandStats | null;
+    highestProfitBrand: BrandStats | null;
+    monthlyData: MonthlyData[];
 }

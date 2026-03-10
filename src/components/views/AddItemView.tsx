@@ -9,6 +9,7 @@ import { Button } from '../ui/Button';
 import { BRANDS, CATEGORIES, CONDITIONS, SALES_CHANNELS } from '../../constants';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { supabase } from '../../lib/supabase';
+import { validatePrice, validateTextLength, validateDateNotFuture, ValidationError } from '../../lib/validation';
 
 export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { onSave: (item: Partial<Item>, newCertificate?: { providerId: string, costEur: number }) => void, onCancel: () => void, initialData?: Item, currentOrgId?: string | null }) => {
     const [formData, setFormData] = useState<Partial<Item>>(initialData || {
@@ -53,6 +54,27 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        try {
+            validateTextLength(formData.brand, 100, 'Marke');
+            validateTextLength(formData.model, 200, 'Modell');
+            validateTextLength(formData.notes, 2000, 'Notizen');
+            validatePrice(formData.purchasePriceEur, 'Einkaufspreis');
+            validateDateNotFuture(formData.purchaseDate, 'Einkaufsdatum');
+
+            if (formData.status === 'sold') {
+                validatePrice(formData.salePriceEur, 'Verkaufspreis');
+                validatePrice(formData.platformFeesEur, 'Plattformgebühren');
+                validatePrice(formData.shippingCostEur, 'Versandkosten');
+                validateDateNotFuture(formData.saleDate, 'Verkaufsdatum');
+            }
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                alert(error.message);
+                return;
+            }
+        }
+
         if (isSubmitting || uploadingImages) return;
 
         setIsSubmitting(true);
@@ -133,7 +155,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
         }
     }, [formData, isLoaded, initialData]);
 
-    const handleChange = (field: keyof Item, value: any) => {
+    const handleChange = (field: keyof Item, value: Item[keyof Item]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -272,7 +294,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                         label="Marke"
                         options={BRANDS}
                         value={formData.brand}
-                        onChange={(e: any) => handleChange('brand', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('brand', e.target.value)}
                         required
                     />
 
@@ -280,7 +302,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                         label="Modell / Bezeichnung"
                         placeholder="z.B. Speedy 30"
                         value={formData.model}
-                        onChange={(e: any) => handleChange('model', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('model', e.target.value)}
                     />
 
                     <div className="grid grid-cols-2 gap-4 mt-6">
@@ -288,13 +310,13 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                             label="Kategorie"
                             options={CATEGORIES}
                             value={formData.category}
-                            onChange={(e: any) => handleChange('category', e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('category', e.target.value)}
                         />
                         <Select
                             label="Zustand"
                             options={CONDITIONS}
                             value={formData.condition}
-                            onChange={(e: any) => handleChange('condition', e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('condition', e.target.value)}
                         />
                     </div>
                 </div>
@@ -312,7 +334,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                                 step="0.01"
                                 placeholder="0.00"
                                 value={formData.purchasePriceEur === 0 ? '' : formData.purchasePriceEur}
-                                onChange={(e: any) => handleChange('purchasePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('purchasePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                 required
                             />
                         </div>
@@ -323,14 +345,14 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                             label="Einkaufsdatum"
                             type="date"
                             value={formData.purchaseDate}
-                            onChange={(e: any) => handleChange('purchaseDate', e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('purchaseDate', e.target.value)}
                             required
                         />
                         <Input
                             label="Einkaufsquelle"
                             placeholder="z.B. Vinted"
                             value={formData.purchaseSource}
-                            onChange={(e: any) => handleChange('purchaseSource', e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('purchaseSource', e.target.value)}
                         />
                     </div>
                 </div>
@@ -342,7 +364,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                         className="w-full px-4 py-3.5 rounded-2xl bg-stone-50 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 focus:border-stone-400 dark:focus:border-zinc-500 outline-none transition-colors min-h-[100px] text-sm font-medium"
                         placeholder="Mängel, Besonderheiten, etc..."
                         value={formData.notes}
-                        onChange={(e: any) => handleChange('notes', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('notes', e.target.value)}
                     />
                 </div>
 
@@ -361,7 +383,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                             label="Verkaufskanal"
                             options={SALES_CHANNELS.map(c => ({ value: c, label: c }))}
                             value={formData.saleChannel || 'Sonstige'}
-                            onChange={(e: any) => handleChange('saleChannel', e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('saleChannel', e.target.value)}
                         />
 
                         <div className="grid grid-cols-2 gap-4 mt-4">
@@ -372,13 +394,13 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                                 step="0.01"
                                 placeholder="0.00"
                                 value={formData.salePriceEur || ''}
-                                onChange={(e: any) => handleChange('salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                             />
                             <Input
                                 label="Verkaufsdatum"
                                 type="date"
                                 value={formData.saleDate ? new Date(formData.saleDate).toISOString().split('T')[0] : ''}
-                                onChange={(e: any) => handleChange('saleDate', e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => handleChange('saleDate', e.target.value)}
                             />
                         </div>
                     </div>

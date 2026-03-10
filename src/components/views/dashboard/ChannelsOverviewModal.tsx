@@ -1,10 +1,11 @@
 import React from 'react';
 import { Store, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../../../lib/utils';
+import { ChannelData } from '../../../types';
 
 interface ChannelsOverviewModalProps {
     onClose: () => void;
-    channelStats: any[];
+    channelStats: ChannelData[];
     totalSoldCount: number;
 }
 

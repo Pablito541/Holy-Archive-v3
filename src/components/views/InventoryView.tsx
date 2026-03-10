@@ -5,8 +5,10 @@ import { formatCurrency } from '../../lib/utils';
 import { FadeIn } from '../ui/FadeIn';
 import { PullToRefresh } from '../ui/PullToRefresh';
 import { QrScannerModal } from '../ui/QrScannerModal';
+import { OrgRole } from '../../lib/roles';
 
-export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, hasMore, onRefresh = async () => { }, filter, onFilterChange, searchQuery, onSearchChange, selectedItemIds, onToggleItemSelection, onBulkSellStart, onExitBulkSelect, onSwitchToBulkSelect }: {
+export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, onLoadMore, hasMore, onRefresh = async () => { }, filter, onFilterChange, searchQuery, onSearchChange, selectedItemIds, onToggleItemSelection, onBulkSellStart, onExitBulkSelect, onSwitchToBulkSelect }: {
+    userRole?: OrgRole | null;
     items: Item[], onSelectItem: (id: string) => void;
     onLoadMore?: () => void;
     hasMore?: boolean;
@@ -25,7 +27,7 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     const filteredItems = useMemo(() => {
-        let result: any[] = [];
+        let result: Item[] = [];
 
         items.forEach(i => {
             // In bulk_sell mode, only show in_stock items

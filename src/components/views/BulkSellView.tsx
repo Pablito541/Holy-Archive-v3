@@ -8,6 +8,7 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { CertificateProvider } from '../../types';
+import { validatePrice, validateDateNotFuture, validateTextLength, ValidationError } from '../../lib/validation';
 
 interface BulkSellViewProps {
     items: Item[];
@@ -45,7 +46,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
         setCertificates(certificates.filter(c => c.id !== id));
     };
 
-    const updateCertificate = (id: string, field: string, value: any) => {
+    const updateCertificate = (id: string, field: string, value: string | number) => {
         setCertificates(certificates.map(c => c.id === id ? { ...c, [field]: value } : c));
     };
 
@@ -82,6 +83,24 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        try {
+            validatePrice(formData.totalPrice, 'Gesamtpreis');
+            validatePrice(formData.totalFees, 'Gebühren');
+            validatePrice(formData.totalShipping, 'Versandkosten');
+            validateDateNotFuture(formData.saleDate, 'Verkaufsdatum');
+            validateTextLength(formData.buyer, 200, 'Käufer');
+
+            certificates.forEach(cert => {
+                validatePrice(cert.salePriceEur, 'Zertifikat Verkaufspreis');
+            });
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                alert(error.message);
+                return;
+            }
+        }
+
         onConfirm({
             salePriceEur: formData.totalPrice,
             saleDate: formData.saleDate,
@@ -162,7 +181,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                         inputMode="decimal"
                         step="0.01"
                         value={formData.totalPrice === 0 ? '' : formData.totalPrice}
-                        onChange={(e: any) => setFormData(p => ({ ...p, totalPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, totalPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                         required
                         autoFocus
                     />
@@ -171,7 +190,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                         label="Käufer"
                         type="text"
                         value={formData.buyer}
-                        onChange={(e: any) => setFormData(p => ({ ...p, buyer: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, buyer: e.target.value }))}
                         placeholder="Name des Käufers"
                     />
 
@@ -179,7 +198,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                         label="Verkaufskanal"
                         options={SALES_CHANNELS.map(channel => ({ value: channel, label: channel }))}
                         value={formData.saleChannel}
-                        onChange={(e: any) => setFormData(p => ({ ...p, saleChannel: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, saleChannel: e.target.value }))}
                     />
 
                     <div className="grid grid-cols-2 gap-4">
@@ -189,7 +208,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                             inputMode="decimal"
                             step="0.01"
                             value={formData.totalFees === 0 ? '' : formData.totalFees}
-                            onChange={(e: any) => setFormData(p => ({ ...p, totalFees: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, totalFees: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                         />
                         <Input
                             label="Versand (€)"
@@ -197,7 +216,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                             inputMode="decimal"
                             step="0.01"
                             value={formData.totalShipping === 0 ? '' : formData.totalShipping}
-                            onChange={(e: any) => setFormData(p => ({ ...p, totalShipping: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, totalShipping: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                         />
                     </div>
 
@@ -205,7 +224,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                         label="Verkaufsdatum"
                         type="date"
                         value={formData.saleDate}
-                        onChange={(e: any) => setFormData(p => ({ ...p, saleDate: e.target.value }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFormData(p => ({ ...p, saleDate: e.target.value }))}
                     />
                 </div>
 
@@ -268,13 +287,13 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                                             ...certificateProviders.map(p => ({ value: p.id, label: p.name }))
                                         ]}
                                         value={cert.providerId}
-                                        onChange={(e: any) => updateCertificate(cert.id, 'providerId', e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => updateCertificate(cert.id, 'providerId', e.target.value)}
                                     />
                                     <Input
                                         label="Anzahl"
                                         type="number"
                                         value={cert.quantity}
-                                        onChange={(e: any) => updateCertificate(cert.id, 'quantity', parseInt(e.target.value) || 0)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => updateCertificate(cert.id, 'quantity', parseInt(e.target.value) || 0)}
                                     />
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
@@ -284,7 +303,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                                         step="0.01"
                                         placeholder="z.B. 25 €"
                                         value={cert.salePriceEur === 0 ? '' : cert.salePriceEur}
-                                        onChange={(e: any) => updateCertificate(cert.id, 'salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => updateCertificate(cert.id, 'salePriceEur', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                     />
                                 </div>
                             </div>

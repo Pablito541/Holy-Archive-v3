@@ -6,15 +6,25 @@ import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
 
+
 export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
     const [isRegistering, setIsRegistering] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [loginAttempts, setLoginAttempts] = useState(0);
+    const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
     const { showToast } = useToast();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (lockoutUntil && Date.now() < lockoutUntil) {
+            const remainingSeconds = Math.ceil((lockoutUntil - Date.now()) / 1000);
+            showToast(`Zu viele Versuche. Bitte warte ${remainingSeconds} Sekunden.`, 'error');
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -34,10 +44,21 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                 });
 
                 if (error) {
+                    setLoginAttempts(prev => {
+                        const newAttempts = prev + 1;
+                        if (newAttempts >= 5) {
+                            setLockoutUntil(Date.now() + 60 * 1000); // 1 minute lockout
+                            return 0;
+                        }
+                        return newAttempts;
+                    });
                     showToast(error.message, 'error');
                 } else if (data.session) {
+                    setLoginAttempts(0);
+                    setLockoutUntil(null);
                     onLogin(data.user);
                 } else {
+                    setLoginAttempts(0);
                     showToast('Fast geschafft! Bitte überprüfe deine E-Mails, um die Registrierung abzuschließen.', 'success');
                 }
                 setLoading(false);
@@ -48,15 +69,25 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                 });
 
                 if (error) {
+                    setLoginAttempts(prev => {
+                        const newAttempts = prev + 1;
+                        if (newAttempts >= 5) {
+                            setLockoutUntil(Date.now() + 60 * 1000);
+                            return 0;
+                        }
+                        return newAttempts;
+                    });
                     showToast(error.message, 'error');
                     setLoading(false);
                 } else {
                     if (data.user) {
+                        setLoginAttempts(0);
+                        setLockoutUntil(null);
                         onLogin(data.user);
                     }
                 }
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("LoginView: Unhandled login error:", err);
             showToast("Ein unerwarteter Fehler ist aufgetreten.", "error");
             setLoading(false);
@@ -78,7 +109,7 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                         label="Email"
                         placeholder="admin@holyarchive.com"
                         value={email}
-                        onChange={(e: any) => setEmail(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                         required
                     />
                     <Input
@@ -86,7 +117,7 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                         label="Passwort"
                         placeholder="••••••••"
                         value={password}
-                        onChange={(e: any) => setPassword(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                         required
                     />
                     <Button type="submit" className="w-full mt-8" disabled={loading}>

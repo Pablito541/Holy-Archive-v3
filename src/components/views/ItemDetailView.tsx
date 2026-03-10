@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { X, ArrowLeft, ZoomIn, Clock, Trash2, ShoppingBag, Edit2, Share2, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Item, Condition } from '../../types';
 import { calculateProfit, formatCurrency, formatDate, conditionLabels } from '../../lib/utils';
+import { OrgRole, canDelete, canSellItems, canEditItems } from '../../lib/roles';
 import { FadeIn } from '../ui/FadeIn';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { StatusBadge } from '../ui/StatusBadge';
 import { QrCodeSection } from '../ui/QrCodeSection';
 
-export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCancelReservation, onCancelSale, onEdit }: {
+export const ItemDetailView = ({ userRole, item, onBack, onSell, onDelete, onReserve, onCancelReservation, onCancelSale, onEdit }: {
+    userRole?: OrgRole | null,
     item: Item,
     onBack: () => void,
     onSell: () => void,
@@ -53,14 +55,14 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                             label="Reserviert für (Name)"
                             placeholder="z.B. Max Mustermann"
                             value={reservationName}
-                            onChange={(e: any) => setReservationName(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReservationName(e.target.value)}
                             autoFocus
                         />
                         <Input
                             label="Dauer (Tage)"
                             type="number"
                             value={reservationDays}
-                            onChange={(e: any) => setReservationDays(parseInt(e.target.value))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReservationDays(parseInt(e.target.value))}
                         />
                         <div className="flex gap-3 pt-2">
                             <Button onClick={() => setIsReserving(false)} variant="secondary" className="flex-1">Abbrechen</Button>
@@ -85,7 +87,7 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex gap-2 pointer-events-auto">
-                        {onEdit && (
+                        {onEdit && canEditItems(userRole) && (
                             <button onClick={onEdit} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md shadow-sm border border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-white active:scale-90 transition-transform">
                                 <Edit2 className="w-4 h-4" />
                             </button>
@@ -138,13 +140,15 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                                     <p className="text-xs opacity-60 mt-1">Bis: {formatDate(item.reservedUntil || '')}</p>
                                 </div>
                             </div>
-                            <Button
-                                onClick={onCancelReservation}
-                                variant="ghost"
-                                className="text-amber-700 hover:bg-amber-100 -mt-2 -mr-2 text-xs px-3 py-2 h-auto"
-                            >
-                                Aufheben
-                            </Button>
+                            {canEditItems(userRole) && (
+                                <Button
+                                    onClick={onCancelReservation}
+                                    variant="ghost"
+                                    className="text-amber-700 hover:bg-amber-100 -mt-2 -mr-2 text-xs px-3 py-2 h-auto"
+                                >
+                                    Aufheben
+                                </Button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -210,7 +214,7 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                 <QrCodeSection itemId={item.id} brand={item.brand} model={item.model} />
 
                 <div className="pt-4 space-y-4 pb-12">
-                    {item.status !== 'sold' && (
+                    {item.status !== 'sold' && canSellItems(userRole) && (
                         <div className="flex gap-3">
                             {item.status === 'in_stock' && (
                                 <Button onClick={() => setIsReserving(true)} variant="amber" className="flex-1">
@@ -223,17 +227,19 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                         </div>
                     )}
 
-                    {item.status === 'sold' && onCancelSale && (
+                    {item.status === 'sold' && onCancelSale && canEditItems(userRole) && (
                         <button onClick={onCancelSale} className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-amber-500 hover:text-amber-300 transition-colors active:scale-[0.98]">
                             <RotateCcw className="w-4 h-4" />
                             Verkauf stornieren
                         </button>
                     )}
 
-                    <button onClick={onDelete} className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-red-400 hover:text-red-300 transition-colors active:scale-[0.98]">
-                        <Trash2 className="w-4 h-4" />
-                        Artikel aus Datenbank löschen
-                    </button>
+                    {canDelete(userRole) && (
+                        <button onClick={onDelete} className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-red-400 hover:text-red-300 transition-colors active:scale-[0.98]">
+                            <Trash2 className="w-4 h-4" />
+                            Artikel aus Datenbank löschen
+                        </button>
+                    )}
                 </div>
             </div>
         </FadeIn>
