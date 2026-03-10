@@ -1,8 +1,11 @@
-# Holy Archive - Vintage Inventory & Profit Tracking
+# Holy Archive v3 - Vintage Inventory & Profit Tracking
+
+> Weiterentwicklung von [Holy Archive v2](https://github.com/paulheilig/Holy-Archive-v2) mit neuem Supabase-Backend und verbesserter Architektur.
 
 Ein modernes Inventar-Management-System für Vintage-Artikel mit integriertem Profit-Tracking, gebaut mit Next.js und Supabase.
 
-![Next.js](https://img.shields.io/badge/Next.js-15.0-black)
+![Next.js](https://img.shields.io/badge/Next.js-16.0-black)
+![React](https://img.shields.io/badge/React-19.2-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4)
 
@@ -18,12 +21,13 @@ Ein modernes Inventar-Management-System für Vintage-Artikel mit integriertem Pr
 
 ## 🚀 Tech Stack
 
-- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS mit custom Design System
-- **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **UI**: React 19 + Tailwind CSS mit custom Design System
+- **Database**: [Supabase](https://supabase.com/) (PostgreSQL + Auth + Storage)
+- **Charts**: [Recharts](https://recharts.org/)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Deployment**: Vercel
+- **Deployment**: Vercel (PWA)
 
 ## 📋 Voraussetzungen
 
@@ -36,7 +40,7 @@ Ein modernes Inventar-Management-System für Vintage-Artikel mit integriertem Pr
 1. **Repository klonen**
    ```bash
    git clone <your-repo-url>
-   cd holy-archive-v2
+   cd holy-archive-v3
    ```
 
 2. **Dependencies installieren**
@@ -46,13 +50,12 @@ Ein modernes Inventar-Management-System für Vintage-Artikel mit integriertem Pr
 
 3. **Environment Variables einrichten**
    
-   Siehe [ENV-README.md](./ENV-README.md) für detaillierte Anleitung.
-   
-   Erstelle eine `.env.local` Datei:
+   Kopiere die `.env.example` und trage deine Supabase-Credentials ein:
    ```bash
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   cp .env.example .env.local
    ```
+
+   Siehe [ENV-README.md](./ENV-README.md) für detaillierte Anleitung.
 
 4. **Development Server starten**
    ```bash
