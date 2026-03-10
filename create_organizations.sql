@@ -17,17 +17,15 @@ create table if not exists organization_members (
   unique(organization_id, user_id)
 );
 
--- 3. Add organization_id to items and leads
+-- 3. Add organization_id to items
 alter table items add column if not exists organization_id uuid references organizations(id);
-alter table leads add column if not exists organization_id uuid references organizations(id);
--- (Optional) Drop user_id/seller_id later, but keep for now for safety backup
 
 -- 4. Enable RLS
 alter table organizations enable row level security;
 alter table organization_members enable row level security;
 
 -- 5. Policies
--- Organizations: Public can read (needed for landing page/showroom to verify slug exists)
+-- Organizations: Public can read (needed to verify slug exists)
 drop policy if exists "Public organizations view" on organizations;
 create policy "Public organizations view"
 on organizations for select
@@ -64,11 +62,5 @@ begin
   update items
   set organization_id = v_org_id
   where user_id = v_user_id
-  and organization_id is null;
-
-  -- Migrate Leads
-  update leads
-  set organization_id = v_org_id
-  where seller_id = v_user_id
   and organization_id is null;
 end $$;
