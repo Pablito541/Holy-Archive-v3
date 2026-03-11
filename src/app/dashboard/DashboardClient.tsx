@@ -196,15 +196,21 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         }
     };
     // Reusable: fetch certificate providers
+    const providersFetchedRef = useRef<boolean>(false);
+    const prevViewRef = useRef<string>(view);
+
     const fetchCertificateProviders = () => {
         if (!supabase || !orgId) return;
         supabase
             .from('certificate_providers')
             .select('*')
             .eq('organization_id', orgId)
+            .order('name')
+            .limit(100)
             .then(({ data, error }) => {
                 if (!error && data) {
                     setCertificateProviders(data as CertificateProvider[]);
+                    providersFetchedRef.current = true;
                 }
             });
     };
@@ -224,10 +230,14 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
     // Refetch providers when returning from settings (image may have changed)
     useEffect(() => {
-        if (view !== 'settings' && user && orgId) {
-            fetchCertificateProviders();
+        if (user && orgId) {
+            // Fetch if not fetched yet, or if coming from 'settings'
+            if (!providersFetchedRef.current || (prevViewRef.current === 'settings' && view !== 'settings')) {
+                fetchCertificateProviders();
+            }
         }
-    }, [view]);
+        prevViewRef.current = view;
+    }, [view, user, orgId]);
 
     // Restore scroll position when returning to inventory view
     useEffect(() => {
@@ -622,7 +632,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         if (!confirm('Wirklich löschen?')) return;
         try {
             if (supabase) {
-                const { error } = await supabase.from('items').delete().eq('id', id);
+                const { error } = await supabase.from('items').update({ deleted_at: new Date().toISOString() }).eq('id', id);
                 if (error) throw error;
             }
             setItems(prev => prev.filter(i => i.id !== id));
@@ -720,7 +730,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
         if (!confirm('Ausgabe wirklich löschen?')) return;
         if (!supabase || !orgId) return;
         try {
-            const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+            const { error } = await supabase.from('expenses').update({ deleted_at: new Date().toISOString() }).eq('id', expenseId);
             if (error) throw error;
             showToast('Ausgabe erfolgreich gelöscht', 'success');
             setView('finances');

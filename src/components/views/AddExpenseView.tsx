@@ -40,6 +40,7 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
     } = useImageUpload({
         initialImageUrls: initialData?.receipt_image_url ? [initialData.receipt_image_url] : [],
         isBulkMode: false,
+        orgId: currentOrgId
     });
 
     // Fetch categories on mount

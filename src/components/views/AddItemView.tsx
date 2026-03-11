@@ -45,7 +45,8 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
     } = useImageUpload({
         initialImageUrls: initialData?.imageUrls || [],
         isBulkMode,
-        bulkQuantity
+        bulkQuantity,
+        orgId: currentOrgId
     });
 
     const [isLoaded, setIsLoaded] = useState(false);

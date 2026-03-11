@@ -10,8 +10,9 @@ interface UseImageUploadProps {
 export const useImageUpload = ({
     initialImageUrls = [],
     isBulkMode = false,
-    bulkQuantity = 1
-}: UseImageUploadProps = {}) => {
+    bulkQuantity = 1,
+    orgId
+}: UseImageUploadProps & { orgId?: string | null } = {}) => {
     const [imageUrls, setImageUrls] = useState<string[]>(initialImageUrls);
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -33,6 +34,17 @@ export const useImageUpload = ({
 
         for (let i = 0; i < files.length && i < (maxImages - imageUrls.length - imagePreviews.length); i++) {
             const file = files[i];
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`Die Datei "${file.name}" ist zu groß (Maximal 10MB).`);
+                continue;
+            }
+
+            if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) {
+                alert(`Dateityp von "${file.name}" nicht erlaubt. Nur JPEG, PNG, WebP und PDF erlaubt.`);
+                continue;
+            }
+
             newFiles.push(file);
 
             if (file.type === 'application/pdf') {
@@ -104,7 +116,8 @@ export const useImageUpload = ({
                     contentType = 'image/webp';
                 }
 
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const basePath = orgId ? `${orgId}/` : '';
+                const fileName = `${basePath}${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('images')

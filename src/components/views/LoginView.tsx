@@ -7,12 +7,13 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
 
 export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
+    const [isRegistering, setIsRegistering] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
@@ -26,19 +27,33 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                 return;
             }
 
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
+            if (isRegistering) {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password
+                });
 
-            if (error) {
-                showToast(error.message, 'error');
+                if (error) {
+                    showToast(error.message, 'error');
+                } else if (data.session) {
+                    onLogin(data.user);
+                } else {
+                    showToast('Fast geschafft! Bitte überprüfe deine E-Mails, um die Registrierung abzuschließen.', 'success');
+                }
                 setLoading(false);
             } else {
-                // Auth state change will be caught by page.tsx listener
-                // But we can also call onLogin as a direct callback
-                if (data.user) {
-                    onLogin(data.user);
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) {
+                    showToast(error.message, 'error');
+                    setLoading(false);
+                } else {
+                    if (data.user) {
+                        onLogin(data.user);
+                    }
                 }
             }
         } catch (err: any) {
@@ -57,7 +72,7 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                 <h1 className="text-4xl font-serif font-bold mb-3">Holy Archive</h1>
                 <p className="text-stone-500 mb-10 text-lg font-light">Inventory & Profit Tracking</p>
 
-                <form onSubmit={handleLogin} className="space-y-4 text-left">
+                <form onSubmit={handleSubmit} className="space-y-4 text-left">
                     <Input
                         type="email"
                         label="Email"
@@ -75,11 +90,21 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                         required
                     />
                     <Button type="submit" className="w-full mt-8" disabled={loading}>
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Anmelden'}
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : isRegistering ? 'Account erstellen' : 'Anmelden'}
                     </Button>
                 </form>
+
+                <div className="mt-6 text-sm text-stone-500">
+                    {isRegistering ? 'Bereits einen Account?' : 'Noch keinen Account?'}
+                    <button
+                        onClick={() => setIsRegistering(!isRegistering)}
+                        className="ml-2 font-bold text-stone-900 hover:text-stone-700 underline"
+                        type="button"
+                    >
+                        {isRegistering ? 'Hier anmelden' : 'Jetzt registrieren'}
+                    </button>
+                </div>
             </FadeIn>
         </div>
     );
 };
-
