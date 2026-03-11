@@ -2,6 +2,11 @@ import { Suspense } from 'react';
 import { createClient } from '../../lib/supabase-server';
 import DashboardClient from './DashboardClient';
 import { Item } from '../../types';
+import { AuthProvider } from '../../providers/AuthProvider';
+import { InventoryProvider } from '../../providers/InventoryProvider';
+import { FinanceProvider } from '../../providers/FinanceProvider';
+import { UIProvider } from '../../providers/UIProvider';
+import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 
 export const metadata = {
   title: "Holy Archive | Dashboard",
@@ -77,11 +82,17 @@ export default async function DashboardPage() {
 
     return (
       <Suspense>
-        <DashboardClient
-          initialUser={user}
-          initialOrgId={initialOrgId}
-          initialItems={initialItems}
-        />
+        <ErrorBoundary>
+          <AuthProvider initialUser={user} initialOrgId={initialOrgId}>
+            <InventoryProvider initialItems={initialItems}>
+              <FinanceProvider>
+                <UIProvider initialView={user ? 'dashboard' : 'login'}>
+                  <DashboardClient />
+                </UIProvider>
+              </FinanceProvider>
+            </InventoryProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </Suspense>
     );
   } catch (error: any) {

@@ -1,5 +1,7 @@
 import { Category, Condition } from './types';
 
+export const PAGE_SIZE = 50;
+
 export const BRANDS = [
     { value: '', label: 'Bitte wählen...' },
     { value: 'Louis Vuitton', label: 'Louis Vuitton' },
