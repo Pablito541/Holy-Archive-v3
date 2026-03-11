@@ -33,6 +33,8 @@ import { OnboardingView } from '../../components/views/OnboardingView';
 import { ActionMenu } from '../../components/views/ActionMenu';
 import { Navigation } from '../../components/views/Navigation';
 import { useToast } from '../../components/ui/Toast';
+import { ErrorBoundary } from '../../components/error/ErrorBoundary';
+import { ViewErrorBoundary } from '../../components/error/ViewErrorBoundary';
 
 interface DashboardClientProps {
     initialUser: User | null;
@@ -42,13 +44,15 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ initialUser, initialOrgId, initialItems }: DashboardClientProps) {
     return (
-        <AuthProvider initialUser={initialUser} initialOrgId={initialOrgId}>
-            <StatsProvider>
-                <InventoryProvider>
-                    <DashboardShell initialItems={initialItems} />
-                </InventoryProvider>
-            </StatsProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider initialUser={initialUser} initialOrgId={initialOrgId}>
+                <StatsProvider>
+                    <InventoryProvider>
+                        <DashboardShell initialItems={initialItems} />
+                    </InventoryProvider>
+                </StatsProvider>
+            </AuthProvider>
+        </ErrorBoundary>
     );
 }
 
@@ -358,7 +362,9 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
 
     return (
         <div className="min-h-screen font-sans text-stone-900 dark:text-zinc-50 pb-20">
-            {renderContent()}
+            <ViewErrorBoundary key={view} viewName={view}>
+                {renderContent()}
+            </ViewErrorBoundary>
 
             {view !== 'login' && selectionMode !== 'bulk_sell' && view !== 'settings' && (
                 <Navigation
