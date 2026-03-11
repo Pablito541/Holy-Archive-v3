@@ -1,30 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Item } from '../../types';
-import { generateId } from '../../lib/utils';
-import { ArrowLeft, Edit2, Camera, MapPin, Banknote } from 'lucide-react';
+import { CertificateProvider } from '../../types';
+import { ArrowLeft, Edit2, Banknote } from 'lucide-react';
 import { FadeIn } from '../ui/FadeIn';
 import { useToast } from '../ui/Toast';
+import { captureException } from '../../lib/errorTracking';
 
 export const SellCertificateView = ({
     onSave,
     onCancel,
     currentOrgId
 }: {
-    onSave: (item: Item) => void;
+    onSave: () => void;
     onCancel: () => void;
     currentOrgId: string | null;
 }) => {
     const { showToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Certificate providers
+    const [providers, setProviders] = useState<CertificateProvider[]>([]);
+    const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+
     // Form fields
-    const [provider, setProvider] = useState('Entrupy');
+    const [providerName, setProviderName] = useState('Entrupy');
     const [costEur, setCostEur] = useState('');
     const [salePriceEur, setSalePriceEur] = useState('');
     const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
     const [buyer, setBuyer] = useState('');
     const [saleChannel, setSaleChannel] = useState('');
+
+    // Fetch providers on mount
+    useEffect(() => {
+        if (!currentOrgId || !supabase) return;
+        const fetchProviders = async () => {
+            try {
+                const { data, error } = await supabase!
+                    .from('certificate_providers')
+                    .select('*')
+                    .eq('organization_id', currentOrgId)
+                    .order('name');
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    setProviders(data as CertificateProvider[]);
+                    setSelectedProviderId(data[0].id);
+                    setProviderName(data[0].name);
+                    setCostEur(data[0].unit_cost_eur?.toString() || '');
+                }
+            } catch (error) {
+                captureException(error instanceof Error ? error : new Error(String(error)), { context: 'fetchCertProviders' });
+            }
+        };
+        fetchProviders();
+    }, [currentOrgId]);
+
+    const handleProviderChange = (providerId: string) => {
+        setSelectedProviderId(providerId);
+        const provider = providers.find(p => p.id === providerId);
+        if (provider) {
+            setProviderName(provider.name);
+            setCostEur(provider.unit_cost_eur?.toString() || '');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,60 +71,31 @@ export const SellCertificateView = ({
             return;
         }
 
-        if (!costEur || !salePriceEur || !saleDate) {
+        if (!salePriceEur || !saleDate) {
             showToast('Bitte fülle alle Pflichtfelder aus', 'error');
             return;
         }
 
         setIsSubmitting(true);
-        const itemId = generateId();
-
-        const newItem = {
-            id: itemId,
-            organization_id: currentOrgId,
-            brand: provider,
-            model: 'Zertifikat',
-            category: 'other',
-            condition: 'mint', // Mint as requested
-            status: 'sold',
-            purchase_price_eur: parseFloat(costEur),
-            purchase_date: saleDate, // Using sale date as purchase date for sync
-            purchase_source: 'Zertifikat Anbieter',
-            sale_price_eur: parseFloat(salePriceEur),
-            sale_date: saleDate,
-            sale_channel: saleChannel,
-            buyer: buyer,
-            notes: 'Unabhängiges Zertifikat',
-            created_at: new Date().toISOString()
-        };
 
         try {
-            const { error } = await supabase.from('items').insert([newItem]);
+            const { error } = await supabase!.from('certificate_sales').insert([{
+                organization_id: currentOrgId,
+                provider_id: selectedProviderId,
+                provider_name: providerName,
+                customer_name: buyer || null,
+                sale_price_eur: parseFloat(salePriceEur),
+                cost_eur: parseFloat(costEur) || 0,
+                sale_date: saleDate,
+                sale_channel: saleChannel || null,
+                notes: null,
+            }]);
             if (error) throw error;
 
-            showToast('Zertifikat erfolgreich in Finanzen erfasst!', 'success');
-
-            // Map back to TypeScript Item type to update local state without full reload
-            onSave({
-                id: itemId,
-                brand: newItem.brand,
-                model: newItem.model,
-                category: newItem.category as any,
-                condition: newItem.condition as any,
-                status: newItem.status as any,
-                purchasePriceEur: newItem.purchase_price_eur,
-                purchaseDate: newItem.purchase_date,
-                purchaseSource: newItem.purchase_source,
-                salePriceEur: newItem.sale_price_eur,
-                saleDate: newItem.sale_date,
-                saleChannel: newItem.sale_channel,
-                buyer: newItem.buyer,
-                notes: newItem.notes,
-                imageUrls: [],
-                createdAt: newItem.created_at
-            });
+            showToast('Zertifikat erfolgreich verkauft!', 'success');
+            onSave();
         } catch (error: unknown) {
-            console.error('Error saving certificate sale:', error);
+            captureException(error instanceof Error ? error : new Error(String(error)), { context: 'saveCertificateSale' });
             showToast('Fehler beim Speichern', 'error');
         } finally {
             setIsSubmitting(false);
@@ -120,16 +128,31 @@ export const SellCertificateView = ({
                         </h2>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 dark:text-zinc-400 mb-2">Anbieter / Marke</label>
-                                <input
-                                    type="text"
-                                    value={provider}
-                                    onChange={(e) => setProvider(e.target.value)}
-                                    placeholder="z.B. Entrupy"
-                                    className="w-full bg-stone-50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors dark:text-zinc-50"
-                                />
-                            </div>
+                            {providers.length > 0 ? (
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 dark:text-zinc-400 mb-2">Anbieter</label>
+                                    <select
+                                        value={selectedProviderId || ''}
+                                        onChange={(e) => handleProviderChange(e.target.value)}
+                                        className="w-full bg-stone-50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors dark:text-zinc-50"
+                                    >
+                                        {providers.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 dark:text-zinc-400 mb-2">Anbieter / Marke</label>
+                                    <input
+                                        type="text"
+                                        value={providerName}
+                                        onChange={(e) => setProviderName(e.target.value)}
+                                        placeholder="z.B. Entrupy"
+                                        className="w-full bg-stone-50 dark:bg-zinc-950 border border-stone-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors dark:text-zinc-50"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -146,7 +169,6 @@ export const SellCertificateView = ({
                                 <input
                                     type="number"
                                     step="0.01"
-                                    required
                                     value={costEur}
                                     onChange={(e) => setCostEur(e.target.value)}
                                     placeholder="15.00"

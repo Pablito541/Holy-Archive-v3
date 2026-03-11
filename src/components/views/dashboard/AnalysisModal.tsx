@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, Sparkles, ArrowRight, Package } from 'lucide-react';
 import { Item } from '../../../types';
@@ -95,8 +96,6 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ type, onClose, top
                             saleChannel: d.sale_channel,
                             platformFeesEur: d.platform_fees_eur,
                             shippingCostEur: d.shipping_cost_eur,
-                            reservedFor: d.reserved_for,
-                            reservedUntil: d.reserved_until,
                             imageUrls: d.image_urls || [],
                             notes: d.notes,
                             createdAt: d.created_at
@@ -198,8 +197,8 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ type, onClose, top
                         ) : (
                             sortedBrandItems.map(item => (
                                 <div key={item.id} className="flex items-center gap-4 p-4 rounded-3xl bg-stone-50/50 dark:bg-zinc-800/30 border border-stone-100 dark:border-zinc-800/50 hover:border-stone-200 dark:hover:border-zinc-700 transition-colors group">
-                                    <div className="w-16 h-16 bg-stone-200 dark:bg-zinc-700 rounded-2xl overflow-hidden flex-shrink-0 shadow-inner">
-                                        {item.imageUrls?.[0] ? <img src={item.imageUrls[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" /> : <Package className="w-full h-full p-4 text-stone-400" />}
+                                    <div className="w-16 h-16 relative bg-stone-200 dark:bg-zinc-700 rounded-2xl overflow-hidden flex-shrink-0 shadow-inner">
+                                        {item.imageUrls?.[0] ? <Image src={item.imageUrls[0]} fill sizes="64px" className="object-cover group-hover:scale-110 transition-transform duration-500" alt="" /> : <Package className="w-full h-full p-4 text-stone-400" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-lg text-stone-900 dark:text-zinc-50 truncate">{item.model || 'Unbenannt'}</p>

@@ -26,6 +26,8 @@ const FinanzenView = dynamic(() => import('../../components/views/FinanzenView')
 const AddExpenseView = dynamic(() => import('../../components/views/AddExpenseView').then(m => m.AddExpenseView));
 const ExpenseDetailView = dynamic(() => import('../../components/views/ExpenseDetailView').then(m => m.ExpenseDetailView));
 const SellCertificateView = dynamic(() => import('../../components/views/SellCertificateView').then(m => m.SellCertificateView));
+const AuditLogView = dynamic(() => import('../../components/views/AuditLogView').then(m => m.AuditLogView));
+const BillingView = dynamic(() => import('../../components/views/BillingView').then(m => m.BillingView));
 
 // Fast, frequently used components can remain static
 import { LoginView } from '../../components/views/LoginView';
@@ -228,8 +230,7 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
 
         if (view === 'sell-certificate') return (
             <SellCertificateView
-                onSave={(newItem) => {
-                    setItems(prev => [newItem, ...prev]);
+                onSave={() => {
                     setView('dashboard');
                     showToast('Zertifikat verkauft', 'success');
                 }}
@@ -324,6 +325,8 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
                 currentOrgId={orgId}
                 onBack={() => setView('dashboard')}
                 onExport={() => setView('export')}
+                onViewAuditLog={() => setView('audit-log')}
+                onViewBilling={() => setView('billing')}
             />
         );
 
@@ -331,6 +334,14 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
             <div className="min-h-screen bg-[#fafaf9] dark:bg-black">
                 <ExportView items={items} onBack={() => setView('settings')} />
             </div>
+        );
+
+        if (view === 'audit-log') return (
+            <AuditLogView currentOrgId={orgId} onBack={() => setView('settings')} />
+        );
+
+        if (view === 'billing') return (
+            <BillingView currentOrgId={orgId} onBack={() => setView('settings')} />
         );
 
         if (view === 'finances') return (

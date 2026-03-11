@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useState } from 'react';
 import { ArrowLeft, Edit2, Trash2, X, Receipt, Repeat } from 'lucide-react';
 import { Expense } from '../../types';
@@ -43,7 +44,9 @@ export const ExpenseDetailView = ({ expense, categoryName, onBack, onEdit, onDel
                     <button className="absolute top-6 right-6 text-white bg-black/50 p-2 rounded-full backdrop-blur-md">
                         <X className="w-6 h-6" />
                     </button>
-                    <img src={expense.receipt_image_url} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+                    <div className="relative w-full h-full max-w-5xl max-h-[85vh]">
+                        <Image src={expense.receipt_image_url} alt="Beleg Vollbild" fill sizes="100vw" className="object-contain rounded-lg shadow-2xl" />
+                    </div>
                 </div>
             )}
 
@@ -55,7 +58,7 @@ export const ExpenseDetailView = ({ expense, categoryName, onBack, onEdit, onDel
                             <span className="font-bold text-sm">PDF Beleg ansehen</span>
                         </div>
                     ) : (
-                        <img src={expense.receipt_image_url} className="w-full h-full object-cover" />
+                        <Image src={expense.receipt_image_url} alt="Beleg Vorschau" fill sizes="100vw" className="object-cover" />
                     )
                 ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-300 dark:text-zinc-700">

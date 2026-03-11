@@ -4,7 +4,6 @@ import { Item } from '../../types';
 import { formatCurrency } from '../../lib/utils';
 import { FadeIn } from '../ui/FadeIn';
 import { Button } from '../ui/Button';
-import * as XLSX from 'xlsx';
 
 export const ExportView = ({ items, onBack }: { items: Item[], onBack?: () => void }) => {
     const [isExporting, setIsExporting] = useState(false);
@@ -89,122 +88,124 @@ export const ExportView = ({ items, onBack }: { items: Item[], onBack?: () => vo
         });
     }, [items, selectedYear, selectedMonth, selectedQuarter]);
 
-    const downloadExcel = () => {
-        // Create Transaction Ledger with unified Betrag column (+/- signs)
-        const transactions: {
-            Datum: string;
-            Typ: string;
-            Beschreibung: string;
-            Betrag: number | '';
-            ID: string;
-            Notizen: string;
-        }[] = [];
+    const downloadExcel = async () => {
+        setIsExporting(true);
+        try {
+            // Dynamically import xlsx
+            const XLSX = await import('xlsx');
 
-        // Iterate through all items to create transaction entries
-        items.forEach(item => {
-            // Expense Entry: Purchase in selected period (negative amount)
-            if (checkInPeriod(item.purchaseDate)) {
-                transactions.push({
-                    'Datum': item.purchaseDate || '',
-                    'Typ': 'AUSGABE',
-                    'Beschreibung': `Einkauf: ${item.brand} ${item.model || ''}`.trim(),
-                    'Betrag': -1 * (item.purchasePriceEur || 0),
-                    'ID': item.id,
-                    'Notizen': item.notes || ''
-                });
-            }
+            // Create Transaction Ledger with unified Betrag column (+/- signs)
+            const transactions: {
+                Datum: string;
+                Typ: string;
+                Beschreibung: string;
+                Betrag: number | '';
+                ID: string;
+                Notizen: string;
+            }[] = [];
 
-            // Income Entry: Sale in selected period (positive amount)
-            if (item.status === 'sold' && checkInPeriod(item.saleDate)) {
-                transactions.push({
-                    'Datum': item.saleDate || '',
-                    'Typ': 'EINNAHME',
-                    'Beschreibung': `Verkauf: ${item.brand} ${item.model || ''}`.trim(),
-                    'Betrag': item.salePriceEur || 0,
-                    'ID': item.id,
-                    'Notizen': item.saleChannel || ''
-                });
-
-                // Also add fees as expenses if they exist (negative amount)
-                const totalFees = (item.platformFeesEur || 0) + (item.shippingCostEur || 0);
-                if (totalFees > 0) {
+            // Iterate through all items to create transaction entries
+            items.forEach(item => {
+                // ... (logic remains the same)
+                if (checkInPeriod(item.purchaseDate)) {
                     transactions.push({
-                        'Datum': item.saleDate || '',
+                        'Datum': item.purchaseDate || '',
                         'Typ': 'AUSGABE',
-                        'Beschreibung': `Gebühren/Versand: ${item.brand} ${item.model || ''}`.trim(),
-                        'Betrag': -1 * totalFees,
+                        'Beschreibung': `Einkauf: ${item.brand} ${item.model || ''}`.trim(),
+                        'Betrag': -1 * (item.purchasePriceEur || 0),
                         'ID': item.id,
-                        'Notizen': `Plattform: ${item.platformFeesEur || 0}€, Versand: ${item.shippingCostEur || 0}€`
+                        'Notizen': item.notes || ''
                     });
                 }
-            }
-        });
 
-        // Sort transactions by date
-        transactions.sort((a, b) => {
-            const dateA = a.Datum ? new Date(a.Datum).getTime() : 0;
-            const dateB = b.Datum ? new Date(b.Datum).getTime() : 0;
-            return dateA - dateB;
-        });
+                if (item.status === 'sold' && checkInPeriod(item.saleDate)) {
+                    transactions.push({
+                        'Datum': item.saleDate || '',
+                        'Typ': 'EINNAHME',
+                        'Beschreibung': `Verkauf: ${item.brand} ${item.model || ''}`.trim(),
+                        'Betrag': item.salePriceEur || 0,
+                        'ID': item.id,
+                        'Notizen': item.saleChannel || ''
+                    });
 
-        // Calculate summary (positive = income, negative = expense)
-        const totalIncome = transactions
-            .filter(t => typeof t.Betrag === 'number' && t.Betrag > 0)
-            .reduce((sum, t) => sum + (t.Betrag as number), 0);
-        const totalExpenses = transactions
-            .filter(t => typeof t.Betrag === 'number' && t.Betrag < 0)
-            .reduce((sum, t) => sum + Math.abs(t.Betrag as number), 0);
-        const profit = totalIncome - totalExpenses;
+                    const totalFees = (item.platformFeesEur || 0) + (item.shippingCostEur || 0);
+                    if (totalFees > 0) {
+                        transactions.push({
+                            'Datum': item.saleDate || '',
+                            'Typ': 'AUSGABE',
+                            'Beschreibung': `Gebühren/Versand: ${item.brand} ${item.model || ''}`.trim(),
+                            'Betrag': -1 * totalFees,
+                            'ID': item.id,
+                            'Notizen': `Plattform: ${item.platformFeesEur || 0}€, Versand: ${item.shippingCostEur || 0}€`
+                        });
+                    }
+                }
+            });
 
-        // Add empty rows before summary
-        transactions.push({ Datum: '', Typ: '', Beschreibung: '', Betrag: '', ID: '', Notizen: '' });
-        transactions.push({ Datum: '', Typ: '', Beschreibung: '', Betrag: '', ID: '', Notizen: '' });
+            transactions.sort((a, b) => {
+                const dateA = a.Datum ? new Date(a.Datum).getTime() : 0;
+                const dateB = b.Datum ? new Date(b.Datum).getTime() : 0;
+                return dateA - dateB;
+            });
 
-        // Add summary rows
-        transactions.push({
-            'Datum': '',
-            'Typ': 'ZUSAMMENFASSUNG',
-            'Beschreibung': 'Gesamteinnahmen',
-            'Betrag': totalIncome,
-            'ID': '',
-            'Notizen': ''
-        });
-        transactions.push({
-            'Datum': '',
-            'Typ': '',
-            'Beschreibung': 'Gesamtausgaben',
-            'Betrag': -1 * totalExpenses,
-            'ID': '',
-            'Notizen': ''
-        });
-        transactions.push({
-            'Datum': '',
-            'Typ': '',
-            'Beschreibung': 'GEWINN/VERLUST',
-            'Betrag': profit,
-            'ID': '',
-            'Notizen': ''
-        });
+            const totalIncome = transactions
+                .filter(t => typeof t.Betrag === 'number' && t.Betrag > 0)
+                .reduce((sum, t) => sum + (t.Betrag as number), 0);
+            const totalExpenses = transactions
+                .filter(t => typeof t.Betrag === 'number' && t.Betrag < 0)
+                .reduce((sum, t) => sum + Math.abs(t.Betrag as number), 0);
+            const profit = totalIncome - totalExpenses;
 
-        // Create worksheet
-        const worksheet = XLSX.utils.json_to_sheet(transactions);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Transaktionen");
+            transactions.push({ Datum: '', Typ: '', Beschreibung: '', Betrag: '', ID: '', Notizen: '' });
+            transactions.push({ Datum: '', Typ: '', Beschreibung: '', Betrag: '', ID: '', Notizen: '' });
 
-        // Auto-size columns
-        const colWidths = [
-            { wch: 12 },  // Datum
-            { wch: 12 },  // Typ
-            { wch: 40 },  // Beschreibung
-            { wch: 14 },  // Betrag
-            { wch: 36 },  // ID
-            { wch: 30 },  // Notizen
-        ];
-        worksheet["!cols"] = colWidths;
+            transactions.push({
+                'Datum': '',
+                'Typ': 'ZUSAMMENFASSUNG',
+                'Beschreibung': 'Gesamteinnahmen',
+                'Betrag': totalIncome,
+                'ID': '',
+                'Notizen': ''
+            });
+            transactions.push({
+                'Datum': '',
+                'Typ': '',
+                'Beschreibung': 'Gesamtausgaben',
+                'Betrag': -1 * totalExpenses,
+                'ID': '',
+                'Notizen': ''
+            });
+            transactions.push({
+                'Datum': '',
+                'Typ': '',
+                'Beschreibung': 'GEWINN/VERLUST',
+                'Betrag': profit,
+                'ID': '',
+                'Notizen': ''
+            });
 
-        const periodLabel = selectedMonth !== 'all' ? `M${selectedMonth}` : selectedQuarter !== 'all' ? `Q${selectedQuarter}` : 'Gesamt';
-        const fileName = `Transaktionen_${selectedYear}_${periodLabel}.xlsx`;
-        XLSX.writeFile(workbook, fileName);
+            const worksheet = XLSX.utils.json_to_sheet(transactions);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Transaktionen");
+
+            const colWidths = [
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 40 },
+                { wch: 14 },
+                { wch: 36 },
+                { wch: 30 },
+            ];
+            worksheet["!cols"] = colWidths;
+
+            const periodLabel = selectedMonth !== 'all' ? `M${selectedMonth}` : selectedQuarter !== 'all' ? `Q${selectedQuarter}` : 'Gesamt';
+            const fileName = `Transaktionen_${selectedYear}_${periodLabel}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+        } catch (error) {
+            console.error('Failed to export to Excel:', error);
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (

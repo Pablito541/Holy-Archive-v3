@@ -34,9 +34,14 @@ export default function LandingPage() {
         </Link>
       </div>
 
-      {/* Footer spacer */}
-      <div className="flex-1" />
-
+      {/* Footer links */}
+      <div className="flex-1 flex items-end justify-center pb-8">
+        <div className="flex gap-4 text-xs text-stone-500 dark:text-zinc-500">
+          <Link href="/impressum" className="hover:text-stone-900 dark:hover:text-zinc-50 transition-colors">Impressum</Link>
+          <Link href="/datenschutz" className="hover:text-stone-900 dark:hover:text-zinc-50 transition-colors">Datenschutz</Link>
+          <Link href="/agb" className="hover:text-stone-900 dark:hover:text-zinc-50 transition-colors">AGB</Link>
+        </div>
+      </div>
     </FadeIn>
   );
 }

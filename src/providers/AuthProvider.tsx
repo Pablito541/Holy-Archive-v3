@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { OrgRole } from '../lib/roles';
 import { User } from '@supabase/supabase-js';
@@ -30,6 +30,10 @@ export function AuthProvider({ children, initialUser, initialOrgId }: AuthProvid
     const [userRole, setUserRole] = useState<OrgRole | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Tracks whether orgId was explicitly set by a consumer (e.g. onboarding onComplete).
+    // Prevents fetchMembership from overwriting it with a stale null result.
+    const orgIdManualRef = useRef(false);
+
     useEffect(() => {
         if (!supabase) return;
 
@@ -44,12 +48,14 @@ export function AuthProvider({ children, initialUser, initialOrgId }: AuthProvid
                             .from('organization_members')
                             .select('organization_id, role')
                             .eq('user_id', currentUser.id)
-                            .maybeSingle()
-                            .then(({ data: member }: { data: any }) => {
+                            .limit(1)
+                            .then(({ data: members }: { data: any }) => {
+                                const member = members?.[0];
                                 if (member && member.organization_id) {
+                                    orgIdManualRef.current = false;
                                     setOrgId(member.organization_id);
                                     setUserRole(member.role as OrgRole);
-                                } else {
+                                } else if (!orgIdManualRef.current) {
                                     setOrgId(null);
                                     setUserRole(null);
                                 }
@@ -59,6 +65,7 @@ export function AuthProvider({ children, initialUser, initialOrgId }: AuthProvid
                     supabase.rpc('check_and_accept_invitations').then(fetchMembership, () => fetchMembership());
                 }
             } else {
+                orgIdManualRef.current = false;
                 setOrgId(null);
                 setUserRole(null);
                 setIsLoading(false);
@@ -72,13 +79,21 @@ export function AuthProvider({ children, initialUser, initialOrgId }: AuthProvid
 
     const signOut = async () => {
         if (supabase) await supabase.auth.signOut();
+        orgIdManualRef.current = false;
         setUser(null);
         setOrgId(null);
         setUserRole(null);
     };
 
+    const handleSetOrgId = useCallback((id: string | null) => {
+        if (id !== null) {
+            orgIdManualRef.current = true;
+        }
+        setOrgId(id);
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ user, orgId, userRole, isLoading, signIn, signOut, setOrgId, setUserRole }}>
+        <AuthContext.Provider value={{ user, orgId, userRole, isLoading, signIn, signOut, setOrgId: handleSetOrgId, setUserRole }}>
             {children}
         </AuthContext.Provider>
     );

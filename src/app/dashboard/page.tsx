@@ -23,11 +23,13 @@ export default async function DashboardPage() {
 
     if (user) {
       // 2. Fetch Organization
-      const { data: member, error: memberError } = await supabase
+      const { data: members, error: memberError } = await supabase
         .from('organization_members')
         .select('organization_id')
         .eq('user_id', user.id)
-        .single();
+        .limit(1);
+
+      const member = members?.[0] ?? null;
 
       if (memberError) {
         console.error("DashboardPage: Error fetching organization membership:", memberError);
@@ -64,8 +66,6 @@ export default async function DashboardPage() {
             saleChannel: d.sale_channel,
             platformFeesEur: d.platform_fees_eur,
             shipping_cost_eur: d.shipping_cost_eur,
-            reservedFor: d.reserved_for,
-            reservedUntil: d.reserved_until,
             imageUrls: d.image_urls || [],
             notes: d.notes,
             createdAt: d.created_at

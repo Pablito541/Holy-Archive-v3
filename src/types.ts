@@ -1,4 +1,4 @@
-export type ItemStatus = 'in_stock' | 'reserved' | 'sold';
+export type ItemStatus = 'in_stock' | 'sold';
 export type Condition = 'mint' | 'very_good' | 'good' | 'fair' | 'poor';
 export type Category = 'bag' | 'wallet' | 'accessory' | 'lock' | 'other';
 
@@ -20,9 +20,6 @@ export interface Item {
     platformFeesEur?: number;
     shippingCostEur?: number;
     buyer?: string;
-
-    reservedFor?: string;
-    reservedUntil?: string;
 
     certificates?: ItemCertificate[];
 
@@ -75,6 +72,20 @@ export interface ItemCertificate {
 
     // Optional relation payload when joining
     provider?: CertificateProvider;
+}
+
+export interface CertificateSale {
+    id: string;
+    organization_id: string;
+    provider_id: string | null;
+    provider_name: string | null;
+    customer_name: string | null;
+    sale_price_eur: number;
+    cost_eur: number;
+    sale_date: string;
+    sale_channel: string | null;
+    notes: string | null;
+    created_at: string;
 }
 
 export interface ChannelData {

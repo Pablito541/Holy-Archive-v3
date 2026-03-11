@@ -32,6 +32,7 @@ import { ToastProvider } from "../components/ui/Toast";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { InstallPrompt } from "../components/ui/InstallPrompt";
 import { ConfirmDialogProvider } from "../components/ui/ConfirmDialog";
+import { CookieBanner } from "../components/ui/CookieBanner";
 
 export default function RootLayout({
   children,
@@ -46,6 +47,7 @@ export default function RootLayout({
             <ConfirmDialogProvider>
               {children}
               <InstallPrompt />
+              <CookieBanner />
             </ConfirmDialogProvider>
           </ToastProvider>
         </ThemeProvider>

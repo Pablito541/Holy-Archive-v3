@@ -262,9 +262,8 @@ export const DashboardView = ({ userRole, items, onViewInventory, onAddItem, use
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                             {/* Hero Card: Financial Overview */}
                             <Card className="lg:col-span-2 p-6 sm:p-8 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden border-0 dark:from-zinc-900 dark:to-black">
-                                {/* Background Decoration */}
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-                                <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/20 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none"></div>
+                                {/* Subtle background glow */}
+                                <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-black/20 rounded-full blur-[80px] pointer-events-none"></div>
 
                                 <div className="relative z-10">
                                     {/* Header with Average Margin */}
@@ -321,36 +320,46 @@ export const DashboardView = ({ userRole, items, onViewInventory, onAddItem, use
                             </Card>
 
                             {/* Stock Overview */}
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between mb-1">
-                                    <h3 className="font-bold text-stone-900 dark:text-zinc-50 text-lg">Inventar</h3>
-                                    <button onClick={onViewInventory} className="text-sm font-medium text-stone-500 dark:text-zinc-400 flex items-center hover:text-stone-900 dark:hover:text-zinc-200 transition-colors">
-                                        Alle <ArrowRight className="w-4 h-4 ml-1" />
-                                    </button>
+                            <Card
+                                className="p-6 sm:p-8 bg-gradient-to-br from-stone-100 to-stone-50 dark:from-zinc-900 dark:to-zinc-950 rounded-[2rem] shadow-lg shadow-stone-900/5 dark:shadow-black/30 border border-stone-200/80 dark:border-zinc-800/50 relative overflow-hidden flex flex-col cursor-pointer"
+                                onClick={onViewInventory}
+                            >
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="flex items-center gap-2.5">
+                                        <Package className="w-5 h-5 text-stone-900 dark:text-white" />
+                                        <h3 className="font-bold text-stone-900 dark:text-zinc-50 text-lg">Inventar</h3>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-stone-400 dark:text-zinc-500" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Card className="p-4 flex flex-col justify-between bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 shadow-sm dark:shadow-zinc-950/50">
-                                        <div className="w-8 h-8 bg-stone-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-3 text-stone-600 dark:text-zinc-400">
-                                            <Package className="w-4 h-4" />
-                                        </div>
+
+                                <div className="mt-auto">
+                                    <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <span className="block text-2xl font-bold text-stone-900 dark:text-zinc-50">{displayStats.stockCount}</span>
-                                            <span className="text-xs text-stone-500 dark:text-zinc-400 font-medium">Artikel im Lager</span>
+                                            <p className="text-stone-400 dark:text-zinc-500 text-xs uppercase tracking-widest mb-2">Im Lager</p>
+                                            <p className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 dark:text-white">{displayStats.stockCount}</p>
                                         </div>
-                                    </Card>
-                                    <Card className="p-4 flex flex-col justify-between bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 shadow-sm dark:shadow-zinc-950/50">
-                                        <div className="w-8 h-8 bg-stone-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-3 text-stone-600 dark:text-zinc-400">
-                                            <Euro className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <span className="block text-2xl font-bold text-stone-900 dark:text-zinc-50">
+                                        <div className="min-w-0">
+                                            <p className="text-stone-400 dark:text-zinc-500 text-xs uppercase tracking-widest mb-2">Warenwert</p>
+                                            <p className={`font-serif font-bold text-stone-900 dark:text-white truncate ${displayStats.inventoryValue >= 10000 ? 'text-xl sm:text-2xl' : displayStats.inventoryValue >= 1000 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}>
                                                 <AnimatedNumber value={displayStats.inventoryValue} format={(val) => formatCurrency(val)} />
-                                            </span>
-                                            <span className="text-xs text-stone-500 dark:text-zinc-400 font-medium">Warenwert</span>
+                                            </p>
                                         </div>
-                                    </Card>
+                                    </div>
+
+                                    {(() => {
+                                        const inStockItems = items.filter(i => i.status === 'in_stock');
+                                        const avgPrice = inStockItems.length > 0
+                                            ? inStockItems.reduce((sum, i) => sum + (i.purchasePriceEur || 0), 0) / inStockItems.length
+                                            : 0;
+                                        return (
+                                            <div className="pt-5 mt-6 border-t border-stone-200/60 dark:border-zinc-800/60 flex items-center justify-between">
+                                                <span className="text-xs text-stone-400 dark:text-zinc-500 uppercase tracking-widest">Ø Einkaufspreis</span>
+                                                <span className="text-sm font-bold text-stone-700 dark:text-zinc-300">{formatCurrency(avgPrice)}</span>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
-                            </div>
+                            </Card>
                         </div>
 
                         {/* Analysis Section */}

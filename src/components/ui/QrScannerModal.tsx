@@ -3,8 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Camera, ScanLine } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
-
+// Remove static import to reduce bundle size
+// import { Html5Qrcode } from 'html5-qrcode';
 interface QrScannerModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -12,7 +12,7 @@ interface QrScannerModalProps {
 }
 
 export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps) => {
-    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const scannerRef = useRef<any>(null);
     const isRunningRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [isStarting, setIsStarting] = useState(true);
@@ -42,8 +42,10 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }: QrScannerModalProps)
 
         const startScanner = async () => {
             try {
+                // Load dynamically
+                const { Html5Qrcode } = await import('html5-qrcode');
                 const scanner = new Html5Qrcode('qr-scanner-region');
-                scannerRef.current = scanner;
+                scannerRef.current = scanner as any;
 
                 await scanner.start(
                     { facingMode: 'environment' },

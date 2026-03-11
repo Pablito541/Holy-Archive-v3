@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, Building2, Receipt, Plus, Trash2, Edit2, Loader2, Camera, X } from 'lucide-react';
+import { ArrowLeft, Download, Building2, Receipt, Plus, Trash2, Edit2, Loader2, Camera, X, Activity, CreditCard } from 'lucide-react';
 import { FadeIn } from '../ui/FadeIn';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -143,10 +143,12 @@ interface SettingsViewProps {
     userRole?: OrgRole | null;
     onBack: () => void;
     onExport: () => void;
+    onViewAuditLog?: () => void;
+    onViewBilling?: () => void;
     currentOrgId: string | null;
 }
 
-export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: SettingsViewProps) => {
+export const SettingsView = ({ userRole, onBack, onExport, onViewAuditLog, onViewBilling, currentOrgId }: SettingsViewProps) => {
     const { showToast } = useToast();
     const { confirm } = useConfirmDialog();
     const [isLoading, setIsLoading] = useState(true);
@@ -321,15 +323,16 @@ export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: Setti
 
                 {/* Export Section */}
                 <section>
-                    <h2 className="text-xs font-bold text-stone-400 dark:text-zinc-500 tracking-wider uppercase ml-1 mb-3">Export & Backups</h2>
-                    <Card className="p-5">
-                        <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-bold text-stone-400 dark:text-zinc-500 tracking-wider uppercase ml-1 mb-3">Datenverwaltung & Sicherheit</h2>
+                    <Card className="divide-y divide-stone-100 dark:divide-zinc-800">
+                        {/* Export */}
+                        <div className="p-5 flex items-center justify-between">
                             <div>
                                 <h3 className="font-bold text-stone-900 dark:text-zinc-50 flex items-center gap-2">
                                     <Download className="w-4 h-4 text-stone-500" /> Daten-Export
                                 </h3>
                                 <p className="text-sm text-stone-500 dark:text-zinc-400 mt-1">
-                                    Exportiere alle Artikeldaten als CSV/Excel (z.B. für den Steuerberater).
+                                    Exportiere alle Artikeldaten als CSV/Excel.
                                 </p>
                             </div>
                             <button
@@ -339,6 +342,44 @@ export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: Setti
                                 Export
                             </button>
                         </div>
+                        {/* Audit Log */}
+                        {canManageSettings(userRole) && (
+                            <div className="p-5 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-stone-900 dark:text-zinc-50 flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-blue-500" /> Aktivitätslog
+                                    </h3>
+                                    <p className="text-sm text-stone-500 dark:text-zinc-400 mt-1">
+                                        Compliance-Übersicht aller Änderungen im System.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={onViewAuditLog}
+                                    className="bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-50 hover:bg-stone-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors shrink-0 ml-4"
+                                >
+                                    Anzeigen
+                                </button>
+                            </div>
+                        )}
+                        {/* Billing */}
+                        {canManageSettings(userRole) && (
+                            <div className="p-5 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-stone-900 dark:text-zinc-50 flex items-center gap-2">
+                                        <CreditCard className="w-4 h-4 text-emerald-500" /> Plan & Abrechnung
+                                    </h3>
+                                    <p className="text-sm text-stone-500 dark:text-zinc-400 mt-1">
+                                        Verwalte DEIN Abonnement und Limits.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={onViewBilling}
+                                    className="bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-50 hover:bg-stone-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors shrink-0 ml-4"
+                                >
+                                    Billing
+                                </button>
+                            </div>
+                        )}
                     </Card>
                 </section>
 
