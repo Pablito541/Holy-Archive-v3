@@ -5,6 +5,7 @@ import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api/client';
 import { useToast } from '../ui/Toast';
 import { ExpenseCategory, Expense } from '../../types';
 import { useImageUpload } from '../../hooks/useImageUpload';
@@ -70,7 +71,7 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
     }, [currentOrgId]);
 
     const handleSave = async () => {
-        if (!currentOrgId || !supabase) return;
+        if (!currentOrgId) return;
 
         const amount = parseFloat(amountStr.replace(',', '.'));
         if (isNaN(amount) || amount <= 0) {
@@ -91,23 +92,22 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
             const receiptImageUrl = finalImageUrls.length > 0 ? finalImageUrls[0] : null;
 
             const expensePayload = {
-                organization_id: currentOrgId,
                 category_id: selectedCategoryId,
                 amount_eur: amount,
                 date: date,
-                description: description || null,
+                description: description || undefined,
                 is_recurring: isRecurring,
-                recurring_interval: isRecurring ? recurringInterval : null,
-                receipt_image_url: receiptImageUrl
+                recurring_interval: isRecurring ? recurringInterval : undefined,
+                receipt_image_url: receiptImageUrl,
             };
 
             if (initialData) {
-                const { error } = await supabase.from('expenses').update(expensePayload).eq('id', initialData.id);
-                if (error) throw error;
+                const { error } = await api.updateExpense(initialData.id, expensePayload);
+                if (error) throw new Error(error);
                 showToast('Ausgabe erfolgreich aktualisiert', 'success');
             } else {
-                const { error } = await supabase.from('expenses').insert(expensePayload);
-                if (error) throw error;
+                const { error } = await api.createExpense(expensePayload);
+                if (error) throw new Error(error);
                 showToast('Ausgabe erfolgreich erfasst', 'success');
             }
 
