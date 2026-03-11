@@ -11,22 +11,27 @@ import { StatsProvider } from '../../providers/StatsProvider';
 import { InventoryProvider, useInventory } from '../../providers/InventoryProvider';
 
 // Views
+import dynamic from 'next/dynamic';
+
+// Heavy Views loaded statically only when needed (Lazy Loading)
+const DashboardView = dynamic(() => import('../../components/views/DashboardView').then(m => m.DashboardView));
+const InventoryView = dynamic(() => import('../../components/views/InventoryView').then(m => m.InventoryView));
+const AddItemView = dynamic(() => import('../../components/views/AddItemView').then(m => m.AddItemView));
+const SellItemView = dynamic(() => import('../../components/views/SellItemView').then(m => m.SellItemView));
+const BulkSellView = dynamic(() => import('../../components/views/BulkSellView').then(m => m.BulkSellView));
+const ItemDetailView = dynamic(() => import('../../components/views/ItemDetailView').then(m => m.ItemDetailView));
+const ExportView = dynamic(() => import('../../components/views/ExportView').then(m => m.ExportView));
+const SettingsView = dynamic(() => import('../../components/views/SettingsView').then(m => m.SettingsView));
+const FinanzenView = dynamic(() => import('../../components/views/FinanzenView').then(m => m.FinanzenView));
+const AddExpenseView = dynamic(() => import('../../components/views/AddExpenseView').then(m => m.AddExpenseView));
+const ExpenseDetailView = dynamic(() => import('../../components/views/ExpenseDetailView').then(m => m.ExpenseDetailView));
+const SellCertificateView = dynamic(() => import('../../components/views/SellCertificateView').then(m => m.SellCertificateView));
+
+// Fast, frequently used components can remain static
 import { LoginView } from '../../components/views/LoginView';
 import { OnboardingView } from '../../components/views/OnboardingView';
-import { DashboardView } from '../../components/views/DashboardView';
-import { InventoryView } from '../../components/views/InventoryView';
-import { AddItemView } from '../../components/views/AddItemView';
-import { SellItemView } from '../../components/views/SellItemView';
-import { BulkSellView } from '../../components/views/BulkSellView';
-import { ItemDetailView } from '../../components/views/ItemDetailView';
-import { ExportView } from '../../components/views/ExportView';
-import { SettingsView } from '../../components/views/SettingsView';
 import { ActionMenu } from '../../components/views/ActionMenu';
 import { Navigation } from '../../components/views/Navigation';
-import { FinanzenView } from '../../components/views/FinanzenView';
-import { AddExpenseView } from '../../components/views/AddExpenseView';
-import { ExpenseDetailView } from '../../components/views/ExpenseDetailView';
-import { SellCertificateView } from '../../components/views/SellCertificateView';
 import { useToast } from '../../components/ui/Toast';
 
 interface DashboardClientProps {
