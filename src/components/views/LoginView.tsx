@@ -5,6 +5,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/Toast';
+import Link from 'next/link';
 
 export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
     const [isRegistering, setIsRegistering] = useState(false);
@@ -92,18 +93,20 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
                     <Button type="submit" className="w-full mt-8" disabled={loading}>
                         {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : isRegistering ? 'Account erstellen' : 'Anmelden'}
                     </Button>
+
+                    <div className="text-center mt-3">
+                        <Link href="/reset-password" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                            Passwort vergessen?
+                        </Link>
+                    </div>
                 </form>
 
-                <div className="mt-6 text-sm text-stone-500">
-                    {isRegistering ? 'Bereits einen Account?' : 'Noch keinen Account?'}
-                    <button
-                        onClick={() => setIsRegistering(!isRegistering)}
-                        className="ml-2 font-bold text-stone-900 hover:text-stone-700 underline"
-                        type="button"
-                    >
-                        {isRegistering ? 'Hier anmelden' : 'Jetzt registrieren'}
-                    </button>
-                </div>
+                <p className="mt-8 text-sm text-stone-500">
+                    Noch keinen Account?{' '}
+                    <Link href="/signup" className="text-stone-900 font-medium hover:underline">
+                        Registrieren
+                    </Link>
+                </p>
             </FadeIn>
         </div>
     );

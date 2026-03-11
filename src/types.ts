@@ -72,3 +72,41 @@ export interface ItemCertificate {
     // Optional relation payload when joining
     provider?: CertificateProvider;
 }
+
+export interface Plan {
+    id: string;
+    name: string;
+    display_name: string;
+    price_eur: number;
+    interval: string;
+    max_items: number | null;
+    max_users: number;
+    max_storage_mb: number;
+    features: string[];
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface Subscription {
+    id: string;
+    organization_id: string;
+    plan_id: string;
+    status: 'active' | 'trialing' | 'canceled' | 'past_due';
+    trial_ends_at: string | null;
+    current_period_start: string;
+    current_period_end: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Invitation {
+    id: string;
+    organization_id: string;
+    email: string;
+    role: string;
+    invited_by: string;
+    token: string;
+    status: 'pending' | 'accepted' | 'expired';
+    expires_at: string;
+    created_at: string;
+}

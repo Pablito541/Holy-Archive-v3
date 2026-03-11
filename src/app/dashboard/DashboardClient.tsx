@@ -22,6 +22,8 @@ import { AddExpenseView } from '../../components/views/AddExpenseView';
 import { ExpenseDetailView } from '../../components/views/ExpenseDetailView';
 import { SellCertificateView } from '../../components/views/SellCertificateView';
 import { useToast } from '../../components/ui/Toast';
+import { GuidedTour } from '../../components/ui/GuidedTour';
+import { useSearchParams } from 'next/navigation';
 
 const PAGE_SIZE = 50;
 
@@ -42,6 +44,8 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     const [inventoryFilter, setInventoryFilter] = useState<ItemStatus>('in_stock');
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
     const [inventorySearchQuery, setInventorySearchQuery] = useState('');
+    const [showTour, setShowTour] = useState(false);
+    const searchParams = useSearchParams();
 
     const [items, setItems] = useState<Item[]>(initialItems);
     const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -56,6 +60,13 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
     const scrollPositionRef = useRef<number>(0);
 
     const { showToast } = useToast();
+
+    // Guided Tour activation
+    useEffect(() => {
+        if (searchParams.get('tour') === 'true' && view === 'dashboard') {
+            setShowTour(true);
+        }
+    }, [searchParams, view]);
 
     // 1. Auth & Data Loading
     useEffect(() => {
@@ -988,6 +999,8 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
                     onAddExpense={() => { setShowActionMenu(false); setView('add-expense'); }}
                 />
             )}
+
+            <GuidedTour active={showTour} onComplete={() => setShowTour(false)} />
         </div>
     );
 }
