@@ -30,8 +30,6 @@ interface InventoryContextType {
     sellItem: (id: string, saleData: any, certSalePrices?: Record<string, number>, standaloneCertificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number }[], certProviders?: CertificateProvider[]) => Promise<boolean>;
     bulkSell: (data: { salePriceEur: number; saleDate: string; saleChannel: string; platformFeesEur: number; shippingCostEur: number; buyer: string; certificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number }[] }, certProviders?: CertificateProvider[]) => Promise<boolean>;
     deleteItem: (id: string) => Promise<boolean>;
-    reserveItem: (id: string, name: string, days: number) => Promise<boolean>;
-    cancelReservation: (id: string) => Promise<boolean>;
     cancelSale: (id: string) => Promise<boolean>;
     toggleItemSelection: (id: string) => void;
 }
@@ -371,53 +369,6 @@ export const InventoryProvider = ({ initialItems, children }: InventoryProviderP
         }
     };
 
-    const reserveItem = async (id: string, name: string, days: number): Promise<boolean> => {
-        try {
-            const reservedUntil = new Date();
-            reservedUntil.setDate(reservedUntil.getDate() + days);
-
-            const { error } = await api.updateItem(id, {
-                status: 'reserved',
-                reserved_for: name,
-                reserved_until: reservedUntil.toISOString(),
-            });
-            if (error) throw new Error(error);
-
-            setItems(prev => prev.map(item => item.id === id ? {
-                ...item,
-                status: 'reserved',
-                reservedFor: name,
-                reservedUntil: reservedUntil.toISOString()
-            } : item));
-            return true;
-        } catch (e) {
-            console.error('Error reserving item:', e);
-            return false;
-        }
-    };
-
-    const cancelReservation = async (id: string): Promise<boolean> => {
-        try {
-            const { error } = await api.updateItem(id, {
-                status: 'in_stock',
-                reserved_for: null,
-                reserved_until: null,
-            });
-            if (error) throw new Error(error);
-
-            setItems(prev => prev.map(item => item.id === id ? {
-                ...item,
-                status: 'in_stock',
-                reservedFor: undefined,
-                reservedUntil: undefined
-            } : item));
-            return true;
-        } catch (e) {
-            console.error('Error canceling reservation:', e);
-            return false;
-        }
-    };
-
     const cancelSale = async (id: string): Promise<boolean> => {
         try {
             const { error } = await api.updateItem(id, {
@@ -482,8 +433,6 @@ export const InventoryProvider = ({ initialItems, children }: InventoryProviderP
         sellItem,
         bulkSell,
         deleteItem,
-        reserveItem,
-        cancelReservation,
         cancelSale,
         toggleItemSelection,
     };

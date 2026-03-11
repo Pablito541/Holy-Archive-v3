@@ -69,9 +69,7 @@ export default async function DashboardPage() {
             saleDate: d.sale_date,
             saleChannel: d.sale_channel,
             platformFeesEur: d.platform_fees_eur,
-            shipping_cost_eur: d.shipping_cost_eur,
-            reservedFor: d.reserved_for,
-            reservedUntil: d.reserved_until,
+            shippingCostEur: d.shipping_cost_eur,
             imageUrls: d.image_urls || [],
             notes: d.notes,
             createdAt: d.created_at

@@ -95,8 +95,6 @@ export const AnalysisModal: React.FC<AnalysisModalProps> = ({ type, onClose, top
                             saleChannel: d.sale_channel,
                             platformFeesEur: d.platform_fees_eur,
                             shippingCostEur: d.shipping_cost_eur,
-                            reservedFor: d.reserved_for,
-                            reservedUntil: d.reserved_until,
                             imageUrls: d.image_urls || [],
                             notes: d.notes,
                             createdAt: d.created_at

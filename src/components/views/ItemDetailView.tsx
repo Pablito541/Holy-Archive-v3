@@ -1,35 +1,23 @@
 import React, { useState } from 'react';
-import { X, ArrowLeft, ZoomIn, Clock, Trash2, ShoppingBag, Edit2, Share2, RotateCcw, ShieldCheck } from 'lucide-react';
+import { X, ArrowLeft, ZoomIn, Trash2, ShoppingBag, Edit2, Share2, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Item, Condition } from '../../types';
 import { calculateProfit, formatCurrency, formatDate, conditionLabels } from '../../lib/utils';
 import { FadeIn } from '../ui/FadeIn';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { StatusBadge } from '../ui/StatusBadge';
 import { QrCodeSection } from '../ui/QrCodeSection';
 
-export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCancelReservation, onCancelSale, onEdit }: {
+export const ItemDetailView = ({ item, onBack, onSell, onDelete, onCancelSale, onEdit }: {
     item: Item,
     onBack: () => void,
     onSell: () => void,
     onDelete: () => void,
-    onReserve: (id: string, name: string, days: number) => void,
-    onCancelReservation?: () => void,
     onCancelSale?: () => void,
     onEdit?: () => void
 }) => {
     const profit = calculateProfit(item);
     const roi = item.purchasePriceEur ? ((profit || 0) / item.purchasePriceEur) * 100 : 0;
     const [isImageOpen, setIsImageOpen] = useState(false);
-    const [isReserving, setIsReserving] = useState(false);
-
-    const [reservationName, setReservationName] = useState('');
-    const [reservationDays, setReservationDays] = useState(7);
-
-    const handleReserve = () => {
-        onReserve(item.id, reservationName, reservationDays);
-        setIsReserving(false);
-    };
 
     return (
         <FadeIn className="bg-white dark:bg-zinc-950 min-h-screen pb-safe relative">
@@ -41,32 +29,6 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                     {item.imageUrls && item.imageUrls[0] && (
                         <img src={item.imageUrls[0]} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
                     )}
-                </div>
-            )}
-
-            {isReserving && (
-                <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
-                    <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-sm" onClick={() => setIsReserving(false)}></div>
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 w-full max-w-sm relative z-10 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
-                        <h3 className="font-serif font-bold text-2xl mb-2 text-stone-900 dark:text-white">Artikel reservieren</h3>
-                        <Input
-                            label="Reserviert für (Name)"
-                            placeholder="z.B. Max Mustermann"
-                            value={reservationName}
-                            onChange={(e: any) => setReservationName(e.target.value)}
-                            autoFocus
-                        />
-                        <Input
-                            label="Dauer (Tage)"
-                            type="number"
-                            value={reservationDays}
-                            onChange={(e: any) => setReservationDays(parseInt(e.target.value))}
-                        />
-                        <div className="flex gap-3 pt-2">
-                            <Button onClick={() => setIsReserving(false)} variant="secondary" className="flex-1">Abbrechen</Button>
-                            <Button onClick={handleReserve} variant="primary" className="flex-1">Speichern</Button>
-                        </div>
-                    </div>
                 </div>
             )}
 
@@ -123,28 +85,6 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
                                     <span className="text-sm font-bold text-emerald-400">{roi.toFixed(0)}% ROI</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                )}
-
-                {item.status === 'reserved' && (
-                    <div className="p-6 bg-amber-50 text-amber-900 rounded-3xl border border-amber-100">
-                        <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-start">
-                                <Clock className="w-5 h-5 mr-2 text-amber-600" />
-                                <div>
-                                    <h4 className="font-bold text-lg mb-1">Reserviert</h4>
-                                    <p className="text-sm opacity-80">Für: {item.reservedFor}</p>
-                                    <p className="text-xs opacity-60 mt-1">Bis: {formatDate(item.reservedUntil || '')}</p>
-                                </div>
-                            </div>
-                            <Button
-                                onClick={onCancelReservation}
-                                variant="ghost"
-                                className="text-amber-700 hover:bg-amber-100 -mt-2 -mr-2 text-xs px-3 py-2 h-auto"
-                            >
-                                Aufheben
-                            </Button>
                         </div>
                     </div>
                 )}
@@ -211,16 +151,9 @@ export const ItemDetailView = ({ item, onBack, onSell, onDelete, onReserve, onCa
 
                 <div className="pt-4 space-y-4 pb-12">
                     {item.status !== 'sold' && (
-                        <div className="flex gap-3">
-                            {item.status === 'in_stock' && (
-                                <Button onClick={() => setIsReserving(true)} variant="amber" className="flex-1">
-                                    Reservieren
-                                </Button>
-                            )}
-                            <button onClick={onSell} className="flex-1 px-6 py-3.5 rounded-2xl font-medium flex items-center justify-center gap-2 text-sm tracking-wide bg-emerald-600 text-white shadow-xl shadow-emerald-900/20 hover:bg-emerald-500 hover:shadow-2xl transition-all duration-300 active:scale-[0.98]">
-                                Verkauf erfassen
-                            </button>
-                        </div>
+                        <button onClick={onSell} className="w-full px-6 py-3.5 rounded-2xl font-medium flex items-center justify-center gap-2 text-sm tracking-wide bg-emerald-600 text-white shadow-xl shadow-emerald-900/20 hover:bg-emerald-500 hover:shadow-2xl transition-all duration-300 active:scale-[0.98]">
+                            Verkauf erfassen
+                        </button>
                     )}
 
                     {item.status === 'sold' && onCancelSale && (

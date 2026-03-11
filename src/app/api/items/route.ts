@@ -7,7 +7,7 @@ import { checkRateLimit } from '@/lib/api/rateLimit';
 
 const VALID_CATEGORIES = ['bag', 'wallet', 'accessory', 'lock', 'other'];
 const VALID_CONDITIONS = ['mint', 'very_good', 'good', 'fair', 'poor'];
-const VALID_STATUSES = ['in_stock', 'reserved', 'sold'];
+const VALID_STATUSES = ['in_stock', 'sold'];
 
 // GET /api/items — List items with pagination and filters
 export async function GET(request: NextRequest) {

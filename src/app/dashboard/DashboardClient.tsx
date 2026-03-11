@@ -100,16 +100,6 @@ export default function DashboardClient() {
         }
     };
 
-    const handleReserveItem = async (id: string, name: string, days: number) => {
-        const ok = await inventory.reserveItem(id, name, days);
-        showToast(ok ? 'Artikel reserviert' : 'Fehler beim Reservieren', ok ? 'success' : 'error');
-    };
-
-    const handleCancelReservation = async (id: string) => {
-        const ok = await inventory.cancelReservation(id);
-        showToast(ok ? 'Reservierung aufgehoben' : 'Fehler beim Aufheben der Reservierung', ok ? 'success' : 'error');
-    };
-
     const handleCancelSale = async (id: string) => {
         if (!confirm('Verkauf wirklich stornieren? Der Artikel wird wieder als "Im Lager" markiert.')) return;
         const ok = await inventory.cancelSale(id);
@@ -261,8 +251,6 @@ export default function DashboardClient() {
                     onBack={() => setView('inventory')}
                     onSell={() => setView('sell-item')}
                     onDelete={() => handleDeleteItem(inventory.selectedItemId!)}
-                    onReserve={handleReserveItem}
-                    onCancelReservation={() => handleCancelReservation(inventory.selectedItemId!)}
                     onCancelSale={() => handleCancelSale(inventory.selectedItemId!)}
                     onEdit={() => setView('edit-item')}
                 />

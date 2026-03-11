@@ -76,8 +76,7 @@ export async function PATCH(
       'brand', 'model', 'category', 'condition', 'status',
       'purchase_price_eur', 'purchase_date', 'purchase_source',
       'sale_price_eur', 'sale_date', 'sale_channel',
-      'platform_fees_eur', 'shipping_cost_eur',
-      'reserved_for', 'reserved_until', 'buyer',
+      'platform_fees_eur', 'shipping_cost_eur', 'buyer',
       'image_urls', 'notes',
     ];
 
