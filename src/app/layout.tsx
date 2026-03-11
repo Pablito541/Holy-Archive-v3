@@ -31,6 +31,7 @@ export const metadata: Metadata = {
 import { ToastProvider } from "../components/ui/Toast";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { InstallPrompt } from "../components/ui/InstallPrompt";
+import { ConfirmDialogProvider } from "../components/ui/ConfirmDialog";
 
 export default function RootLayout({
   children,
@@ -42,8 +43,10 @@ export default function RootLayout({
       <body className={`${inter.className} ${playfair.variable} h-full min-h-screen transition-colors duration-300`}>
         <ThemeProvider>
           <ToastProvider>
-            {children}
-            <InstallPrompt />
+            <ConfirmDialogProvider>
+              {children}
+              <InstallPrompt />
+            </ConfirmDialogProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

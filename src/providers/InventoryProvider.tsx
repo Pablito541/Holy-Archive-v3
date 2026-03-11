@@ -6,6 +6,7 @@ import { useAuth } from './AuthProvider';
 import { useStats } from './StatsProvider';
 import { Item, ItemStatus, CertificateProvider } from '../types';
 import { useToast } from '../components/ui/Toast';
+import { useConfirmDialog } from '../components/ui/ConfirmDialog';
 
 interface InventoryContextType {
     items: Item[];
@@ -33,8 +34,6 @@ interface InventoryContextType {
     sellItem: (id: string, saleData: any, certSalePrices?: Record<string, number>, standaloneCertificates?: any[]) => Promise<void>;
     bulkSell: (data: any) => Promise<void>;
     toggleItemSelection: (id: string) => void;
-    reserveItem: (id: string, name: string, days: number) => Promise<void>;
-    cancelReservation: (id: string) => Promise<void>;
     cancelSale: (id: string) => Promise<void>;
 }
 
@@ -46,6 +45,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { user, orgId } = useAuth();
     const { fetchStats } = useStats();
     const { showToast } = useToast();
+    const { confirm } = useConfirmDialog();
 
     const [items, setItems] = useState<Item[]>([]);
     const [page, setPage] = useState(0);
@@ -115,8 +115,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                     saleChannel: d.sale_channel,
                     platformFeesEur: d.platform_fees_eur,
                     shippingCostEur: d.shipping_cost_eur,
-                    reservedFor: d.reserved_for,
-                    reservedUntil: d.reserved_until,
                     certificates: d.item_certificates?.map((c: any) => ({
                         id: c.id,
                         organization_id: c.organization_id,
@@ -175,6 +173,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         try {
             const dbItem = {
                 user_id: user?.id,
+                organization_id: orgId,
                 brand: data.brand || 'Unknown',
                 model: data.model || '',
                 category: data.category || 'bag',
@@ -233,8 +232,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                         saleChannel: inserted.sale_channel,
                         platformFeesEur: inserted.platform_fees_eur,
                         shippingCostEur: inserted.shipping_cost_eur,
-                        reservedFor: inserted.reserved_for,
-                        reservedUntil: inserted.reserved_until,
                         certificates: newCertificates,
                         imageUrls: inserted.image_urls || [],
                         notes: inserted.notes,
@@ -278,7 +275,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     };
 
     const deleteItem = async (id: string) => {
-        if (!confirm('Wirklich löschen?')) return;
+        const confirmed = await confirm({
+            title: 'Item löschen?',
+            description: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+            confirmLabel: 'Löschen',
+            variant: 'destructive'
+        });
+        if (!confirmed) return;
         try {
             if (supabase) {
                 const { error } = await supabase.from('items').update({ deleted_at: new Date().toISOString() }).eq('id', id);
@@ -292,7 +295,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // Keep all other sell/reserve functions identical, simply adapting their state calls
+    // Sell & cancel functions
     const sellItem = async (id: string, saleData: any, certSalePrices?: Record<string, number>, standaloneCertificates?: any[]) => {
         try {
             if (!supabase) throw new Error('Supabase client not initialized');
@@ -501,57 +504,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const reserveItem = async (id: string, name: string, days: number) => {
-        try {
-            const reservedUntil = new Date();
-            reservedUntil.setDate(reservedUntil.getDate() + days);
-
-            if (supabase) {
-                const { error } = await supabase.from('items').update({
-                    status: 'reserved',
-                    reserved_for: name,
-                    reserved_until: reservedUntil.toISOString()
-                }).eq('id', id);
-                if (error) throw error;
-            }
-
-            setItems(prev => prev.map(item => item.id === id ? {
-                ...item,
-                status: 'reserved',
-                reservedFor: name,
-                reservedUntil: reservedUntil.toISOString()
-            } : item));
-            showToast('Artikel reserviert', 'success');
-        } catch (e) {
-            showToast('Fehler beim Reservieren', 'error');
-        }
-    };
-
-    const cancelReservation = async (id: string) => {
-        try {
-            if (supabase) {
-                const { error } = await supabase.from('items').update({
-                    status: 'in_stock',
-                    reserved_for: null,
-                    reserved_until: null
-                }).eq('id', id);
-                if (error) throw error;
-            }
-
-            setItems(prev => prev.map(item => item.id === id ? {
-                ...item,
-                status: 'in_stock',
-                reservedFor: undefined,
-                reservedUntil: undefined
-            } : item));
-            showToast('Reservierung aufgehoben', 'success');
-        } catch (e) {
-            showToast('Fehler beim Aufheben der Reservierung', 'error');
-        }
-    };
-
     const cancelSale = async (id: string) => {
-        if (!confirm('Verkauf wirklich stornieren? Der Artikel wird wieder als "Im Lager" markiert.')) return;
+        const confirmed = await confirm({
+            title: 'Verkauf stornieren?',
+            description: 'Der Artikel wird wieder als "Im Lager" markiert.',
+            confirmLabel: 'Stornieren',
+            variant: 'destructive'
+        });
+        if (!confirmed) return;
 
         try {
             if (supabase) {
@@ -593,7 +553,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             isLoading, loadData, handleLoadMore,
             createItem, updateItem, deleteItem,
             sellItem, bulkSell, toggleItemSelection,
-            reserveItem, cancelReservation, cancelSale
+            cancelSale
         }}>
             {children}
         </InventoryContext.Provider>

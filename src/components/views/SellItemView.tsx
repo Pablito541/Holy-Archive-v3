@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useState } from 'react';
 import { ArrowLeft, ShoppingBag, Plus, Trash2 } from 'lucide-react';
 import { Item } from '../../types';
@@ -9,8 +10,11 @@ import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { CertificateProvider } from '../../types';
 import { validatePrice, validateDateNotFuture, ValidationError } from '../../lib/validation';
+import { useToast } from '../ui/Toast';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 
 export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCancel }: { item: Item, certificateProviders?: CertificateProvider[], onConfirm: (data: Partial<Item>, certSalePrices?: Record<string, number>, standaloneCertificates?: { provider: string; quantity: number; costEur: number; salePriceEur: number; }[]) => void, onCancel: () => void }) => {
+    const { showToast } = useToast();
     const [formData, setFormData] = useState({
         salePriceEur: 0,
         saleDate: new Date().toISOString().split('T')[0],
@@ -55,6 +59,9 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
     // Plus standalone cert revenue, minus standalone cert costs
     const profit = formData.salePriceEur - totalCertRevenue - item.purchasePriceEur - formData.platformFeesEur - formData.shippingCostEur + standaloneCertRevenue - standaloneCertCost;
 
+    const isDirty = formData.salePriceEur > 0 || formData.platformFeesEur > 0 || formData.shippingCostEur > 0;
+    useUnsavedChanges(isDirty);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -68,7 +75,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
             certificates.forEach(cert => validatePrice(cert.salePriceEur, 'Zertifikat Verkaufspreis'));
         } catch (error) {
             if (error instanceof ValidationError) {
-                alert(error.message);
+                showToast(error.message, 'error');
                 return;
             }
         }
@@ -98,7 +105,7 @@ export const SellItemView = ({ item, certificateProviders = [], onConfirm, onCan
             <form onSubmit={handleSubmit} className="px-6 space-y-6 max-w-lg mx-auto">
                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl flex items-center shadow-sm border border-stone-100 dark:border-zinc-800">
                     <div className="w-16 h-16 bg-stone-100 dark:bg-zinc-800 rounded-2xl mr-4 flex items-center justify-center relative overflow-hidden">
-                        {item.imageUrls && item.imageUrls[0] ? <img src={item.imageUrls[0]} className="w-full h-full object-cover" /> : <ShoppingBag className="w-6 h-6 text-stone-300 dark:text-zinc-600" />}
+                        {item.imageUrls && item.imageUrls[0] ? <Image src={item.imageUrls[0]} alt={item.model || ''} fill sizes="64px" className="object-cover" /> : <ShoppingBag className="w-6 h-6 text-stone-300 dark:text-zinc-600" />}
                     </div>
                     <div>
                         <div className="font-serif font-bold text-lg dark:text-zinc-50">{item.brand}</div>

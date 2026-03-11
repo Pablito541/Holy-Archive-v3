@@ -1,9 +1,11 @@
+import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Download, Building2, Receipt, Plus, Trash2, Edit2, Loader2, Camera, X } from 'lucide-react';
 import { FadeIn } from '../ui/FadeIn';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { useToast } from '../ui/Toast';
+import { useConfirmDialog } from '../ui/ConfirmDialog';
 import { supabase } from '../../lib/supabase';
 import { CertificateProvider, ExpenseCategory } from '../../types';
 import { formatCurrency } from '../../lib/utils';
@@ -107,13 +109,13 @@ const CertificateProviderForm = ({
                 <div className="flex gap-2 relative">
                     {imageUrls.map((url, i) => (
                         <div key={`existing-${i}`} className="relative w-12 h-12 rounded-xl overflow-hidden bg-stone-100 dark:bg-zinc-800">
-                            <img src={url} alt="Zertifikat" className="w-full h-full object-cover" />
+                            <Image src={url} alt="Zertifikat" fill sizes="48px" className="object-cover" />
                             <button onClick={() => handleRemoveExistingImage(i)} className="absolute top-1 right-1 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white"><X className="w-2.5 h-2.5" /></button>
                         </div>
                     ))}
                     {imagePreviews.map((preview, i) => (
                         <div key={`preview-${i}`} className="relative w-12 h-12 rounded-xl overflow-hidden bg-stone-100 dark:bg-zinc-800">
-                            <img src={preview} alt="Vorschau" className="w-full h-full object-cover opacity-70" />
+                            <Image src={preview} alt="Vorschau" fill sizes="48px" unoptimized className="object-cover opacity-70" />
                             <button onClick={() => handleRemovePendingImage(i)} className="absolute top-1 right-1 w-4 h-4 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white"><X className="w-2.5 h-2.5" /></button>
                         </div>
                     ))}
@@ -146,6 +148,7 @@ interface SettingsViewProps {
 
 export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: SettingsViewProps) => {
     const { showToast } = useToast();
+    const { confirm } = useConfirmDialog();
     const [isLoading, setIsLoading] = useState(true);
 
     // Certificates State
@@ -202,7 +205,13 @@ export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: Setti
     // --- Certificate Actions ---
 
     const handleDeleteCertificate = async (id: string, name: string) => {
-        if (!confirm(`Möchtest du '${name}' wirklich löschen?`)) return;
+        const confirmed = await confirm({
+            title: `'${name}' löschen?`,
+            description: 'Dieses Zertifikat wird dauerhaft entfernt.',
+            confirmLabel: 'Löschen',
+            variant: 'destructive'
+        });
+        if (!confirmed) return;
 
         try {
             const { error } = await supabase!.from('certificate_providers').delete().eq('id', id);
@@ -263,7 +272,13 @@ export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: Setti
     };
 
     const handleDeleteExpense = async (id: string, name: string) => {
-        if (!confirm(`Möchtest du '${name}' wirklich löschen? Es darf keine Ausgaben zu dieser Kategorie geben.`)) return;
+        const confirmed = await confirm({
+            title: `'${name}' löschen?`,
+            description: 'Es darf keine Ausgaben zu dieser Kategorie geben.',
+            confirmLabel: 'Löschen',
+            variant: 'destructive'
+        });
+        if (!confirmed) return;
 
         try {
             const { error } = await supabase!.from('expense_categories').delete().eq('id', id);
@@ -366,8 +381,8 @@ export const SettingsView = ({ userRole, onBack, onExport, currentOrgId }: Setti
                                     <div className="p-4 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             {cert.image_url ? (
-                                                <div className="w-10 h-10 rounded-lg overflow-hidden bg-stone-100 dark:bg-zinc-800">
-                                                    <img src={cert.image_url} alt={cert.name} className="w-full h-full object-cover" />
+                                                <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-stone-100 dark:bg-zinc-800">
+                                                    <Image src={cert.image_url} alt={cert.name} fill sizes="40px" className="object-cover" />
                                                 </div>
                                             ) : (
                                                 <div className="w-10 h-10 rounded-lg bg-stone-100 dark:bg-zinc-800 flex items-center justify-center">

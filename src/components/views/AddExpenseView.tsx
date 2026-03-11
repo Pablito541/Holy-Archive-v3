@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Loader2, Save, Receipt, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -9,6 +10,7 @@ import { useToast } from '../ui/Toast';
 import { ExpenseCategory, Expense } from '../../types';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { validatePrice, validateTextLength, validateDateNotFuture, ValidationError } from '../../lib/validation';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 
 interface AddExpenseViewProps {
     currentOrgId: string | null;
@@ -43,6 +45,9 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
         isBulkMode: false,
         orgId: currentOrgId
     });
+
+    const isDirtyExpense = amountStr.length > 0 || description.length > 0;
+    useUnsavedChanges(isDirtyExpense);
 
     // Fetch categories on mount
     useEffect(() => {
@@ -160,7 +165,7 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
                                             <span className="font-bold text-sm">PDF ansehen</span>
                                         </div>
                                     ) : (
-                                        <img src={url} className="w-full h-full object-cover" alt="Beleg" />
+                                        <Image src={url} fill sizes="33vw" className="object-cover" alt="Beleg" />
                                     )}
                                     <button
                                         type="button"
@@ -179,7 +184,7 @@ export const AddExpenseView = ({ currentOrgId, onSave, onCancel, initialData }: 
                                             <span className="font-bold text-sm">PDF Beleg</span>
                                         </div>
                                     ) : (
-                                        <img src={preview} className="w-full h-full object-cover" alt="Preview Beleg" />
+                                        <Image src={preview} fill sizes="33vw" unoptimized className="object-cover" alt="Preview Beleg" />
                                     )}
                                     <button
                                         type="button"

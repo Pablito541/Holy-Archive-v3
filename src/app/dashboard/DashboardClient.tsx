@@ -33,6 +33,7 @@ import { OnboardingView } from '../../components/views/OnboardingView';
 import { ActionMenu } from '../../components/views/ActionMenu';
 import { Navigation } from '../../components/views/Navigation';
 import { useToast } from '../../components/ui/Toast';
+import { useConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ErrorBoundary } from '../../components/error/ErrorBoundary';
 import { ViewErrorBoundary } from '../../components/error/ViewErrorBoundary';
 
@@ -58,7 +59,7 @@ export default function DashboardClient({ initialUser, initialOrgId, initialItem
 
 /** The thin layout shell — only view routing & UI chrome state lives here */
 function DashboardShell({ initialItems }: { initialItems: Item[] }) {
-    const { user, orgId, userRole, signIn, signOut, setOrgId, setUserRole } = useAuth();
+    const { user, orgId, userRole, isLoading, signIn, signOut, setOrgId, setUserRole } = useAuth();
     const {
         items, setItems,
         selectionMode, setSelectionMode,
@@ -68,7 +69,7 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
         hasMore, loadData, handleLoadMore,
         createItem, updateItem, deleteItem,
         sellItem, bulkSell, toggleItemSelection,
-        reserveItem, cancelReservation, cancelSale
+        cancelSale
     } = useInventory();
 
     // --- View-level state (only kept here) ---
@@ -85,6 +86,7 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
     const prevViewRef = useRef<string>(view);
 
     const { showToast } = useToast();
+    const { confirm } = useConfirmDialog();
 
     // Seed initial items into the inventory provider on mount
     useEffect(() => {
@@ -93,14 +95,18 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Watch auth state to switch views
+    // Watch auth state to switch views (wait for auth to finish loading before deciding)
     useEffect(() => {
+        if (isLoading) return;
         if (!user) {
             setView('login');
         } else if (user && !orgId) {
             setView('onboarding');
+        } else if (user && orgId) {
+            // Transition from login to dashboard once auth is confirmed
+            setView(prev => prev === 'login' ? 'dashboard' : prev);
         }
-    }, [user, orgId]);
+    }, [user, orgId, isLoading]);
 
     // Fetch items & providers on login
     useEffect(() => {
@@ -136,7 +142,13 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
     };
 
     const handleDeleteExpense = async (expenseId: string) => {
-        if (!confirm('Ausgabe wirklich löschen?')) return;
+        const confirmed = await confirm({
+            title: 'Ausgabe löschen?',
+            description: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+            confirmLabel: 'Löschen',
+            variant: 'destructive'
+        });
+        if (!confirmed) return;
         if (!supabase || !orgId) return;
         try {
             const { error } = await supabase.from('expenses').update({ deleted_at: new Date().toISOString() }).eq('id', expenseId);
@@ -292,6 +304,7 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
             if (!item) return null;
             return (
                 <ItemDetailView
+                    userRole={userRole}
                     item={item}
                     onBack={() => setView('inventory')}
                     onSell={() => setView('sell-item')}
@@ -299,8 +312,6 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
                         deleteItem(selectedItemId);
                         setView('inventory');
                     }}
-                    onReserve={reserveItem}
-                    onCancelReservation={() => cancelReservation(selectedItemId)}
                     onCancelSale={() => cancelSale(selectedItemId)}
                     onEdit={() => setView('edit-item')}
                 />
@@ -366,7 +377,7 @@ function DashboardShell({ initialItems }: { initialItems: Item[] }) {
                 {renderContent()}
             </ViewErrorBoundary>
 
-            {view !== 'login' && selectionMode !== 'bulk_sell' && view !== 'settings' && (
+            {view !== 'login' && view !== 'onboarding' && selectionMode !== 'bulk_sell' && view !== 'settings' && (
                 <Navigation
                     userRole={userRole}
                     currentView={view}

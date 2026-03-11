@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Mail, UserMinus, Plus, ShieldAlert, Loader2, Check } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/Toast';
+import { useConfirmDialog } from '../../ui/ConfirmDialog';
 import { Card } from '../../ui/Card';
 import { Input } from '../../ui/Input';
 import { OrgRole, canManageMembers } from '../../../lib/roles';
@@ -16,6 +17,7 @@ interface TeamMember {
 
 export const TeamSettings = ({ currentOrgId, userRole }: { currentOrgId: string, userRole?: OrgRole | null }) => {
     const { showToast } = useToast();
+    const { confirm } = useConfirmDialog();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -73,7 +75,13 @@ export const TeamSettings = ({ currentOrgId, userRole }: { currentOrgId: string,
     };
 
     const handleRemoveMember = async (memberId: string, email: string) => {
-        if (!confirm(`Möchtest du ${email || 'dieses Mitglied'} wirklich aus der Organisation entfernen?`)) return;
+        const confirmed = await confirm({
+            title: 'Mitglied entfernen?',
+            description: `Möchtest du ${email || 'dieses Mitglied'} wirklich aus der Organisation entfernen?`,
+            confirmLabel: 'Entfernen',
+            variant: 'destructive'
+        });
+        if (!confirmed) return;
 
         try {
             const { error } = await supabase!.rpc('remove_team_member', {

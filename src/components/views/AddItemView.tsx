@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, Save, Image as ImageIcon } from 'lucide-react';
 import { Item } from '../../types';
@@ -10,8 +11,12 @@ import { BRANDS, CATEGORIES, CONDITIONS, SALES_CHANNELS } from '../../constants'
 import { useImageUpload } from '../../hooks/useImageUpload';
 import { supabase } from '../../lib/supabase';
 import { validatePrice, validateTextLength, validateDateNotFuture, ValidationError } from '../../lib/validation';
+import { UploadFeedback } from '../ui/UploadFeedback';
+import { useToast } from '../ui/Toast';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 
 export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { onSave: (item: Partial<Item>, newCertificate?: { providerId: string, costEur: number }) => void, onCancel: () => void, initialData?: Item, currentOrgId?: string | null }) => {
+    const { showToast } = useToast();
     const [formData, setFormData] = useState<Partial<Item>>(initialData || {
         brand: '',
         category: 'bag',
@@ -38,6 +43,10 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
         pendingFiles,
         imagePreviews,
         uploading: uploadingImages,
+        progress: uploadProgress,
+        error: uploadError,
+        success: uploadSuccess,
+        clearError: clearUploadError,
         handleFileChange,
         handleRemoveExistingImage,
         handleRemovePendingImage,
@@ -51,6 +60,16 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
     });
 
     const [isLoaded, setIsLoaded] = useState(false);
+
+    // Track if form has been changed
+    const isDirty = isLoaded && (
+        JSON.stringify(formData) !== JSON.stringify(initialData || {
+            brand: '', category: 'bag', condition: 'good',
+            purchasePriceEur: 0, purchaseDate: new Date().toISOString().split('T')[0],
+            purchaseSource: '', model: '', notes: '', status: 'in_stock', imageUrls: []
+        }) || pendingFiles.length > 0
+    );
+    useUnsavedChanges(isDirty);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,7 +89,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
             }
         } catch (error) {
             if (error instanceof ValidationError) {
-                alert(error.message);
+                showToast(error.message, 'error');
                 return;
             }
         }
@@ -86,7 +105,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
             if (isBulkMode && bulkQuantity > 1 && !initialData) {
                 // Strict validation: image count must match bulk quantity
                 if (finalImageUrls.length !== bulkQuantity) {
-                    alert(`Fehler: Für ${bulkQuantity} Artikel müssen genau ${bulkQuantity} Fotos hochgeladen werden.`);
+                    showToast(`Für ${bulkQuantity} Artikel müssen genau ${bulkQuantity} Fotos hochgeladen werden.`, 'error');
                     setIsSubmitting(false);
                     return;
                 }
@@ -126,7 +145,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
             }
         } catch (error) {
             console.error('Error saving item:', error);
-            alert('Fehler beim Speichern. Bitte erneut versuchen.');
+            showToast('Fehler beim Speichern. Bitte erneut versuchen.', 'error');
             setIsSubmitting(false);
         }
     };
@@ -242,7 +261,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                         <div className="grid grid-cols-3 gap-3">
                             {imageUrls.map((url, idx) => (
                                 <div key={`existing-${idx}`} className="relative aspect-square bg-stone-100 dark:bg-zinc-800 rounded-2xl overflow-hidden group">
-                                    <img src={url} className="w-full h-full object-cover" alt={`Image ${idx + 1}`} />
+                                    <Image src={url} fill sizes="33vw" className="object-cover" alt={`Image ${idx + 1}`} />
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveExistingImage(idx)}
@@ -255,7 +274,7 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
 
                             {imagePreviews.map((preview, idx) => (
                                 <div key={`preview-${idx}`} className="relative aspect-square bg-stone-100 dark:bg-zinc-800 rounded-2xl overflow-hidden group border-2 border-dashed border-stone-400 dark:border-zinc-600">
-                                    <img src={preview} className="w-full h-full object-cover" alt={`Preview ${idx + 1}`} />
+                                    <Image src={preview} fill sizes="33vw" unoptimized className="object-cover" alt={`Preview ${idx + 1}`} />
                                     <button
                                         type="button"
                                         onClick={() => handleRemovePendingImage(idx)}
@@ -283,6 +302,14 @@ export const AddItemView = ({ onSave, onCancel, initialData, currentOrgId }: { o
                                 </label>
                             )}
                         </div>
+                        
+                        <UploadFeedback
+                            isUploading={uploadingImages}
+                            progress={uploadProgress}
+                            error={uploadError}
+                            success={uploadSuccess}
+                            onClearError={clearUploadError}
+                        />
                     </div>
                 </div>
 

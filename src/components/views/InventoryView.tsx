@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useMemo, useEffect, useState } from 'react';
 import { Search, ShoppingBag, Tag, ArrowRight, ArrowLeft, CheckSquare, Square, X, ShieldCheck, ScanLine } from 'lucide-react';
 import { Item, ItemStatus } from '../../types';
@@ -6,8 +7,10 @@ import { FadeIn } from '../ui/FadeIn';
 import { PullToRefresh } from '../ui/PullToRefresh';
 import { QrScannerModal } from '../ui/QrScannerModal';
 import { OrgRole } from '../../lib/roles';
+import { EmptyState } from '../ui/EmptyState';
+import { SkeletonCard } from '../ui/SkeletonCard';
 
-export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, onLoadMore, hasMore, onRefresh = async () => { }, filter, onFilterChange, searchQuery, onSearchChange, selectedItemIds, onToggleItemSelection, onBulkSellStart, onExitBulkSelect, onSwitchToBulkSelect }: {
+export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, onLoadMore, hasMore, onRefresh = async () => { }, filter, onFilterChange, searchQuery, onSearchChange, selectedItemIds, onToggleItemSelection, onBulkSellStart, onExitBulkSelect, onSwitchToBulkSelect, isLoading }: {
     userRole?: OrgRole | null;
     items: Item[], onSelectItem: (id: string) => void;
     onLoadMore?: () => void;
@@ -23,6 +26,7 @@ export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, on
     onBulkSellStart?: () => void;
     onExitBulkSelect?: () => void;
     onSwitchToBulkSelect?: () => void;
+    isLoading?: boolean;
 }) => {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
@@ -150,7 +154,7 @@ export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, on
 
                         {selectionMode !== 'sell' && !isBulkSelect && (
                             <div className="flex p-1 bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-                                {(['in_stock', 'sold', 'reserved'] as const).map(status => (
+                                {(['in_stock', 'sold'] as const).map(status => (
                                     <button
                                         key={status}
                                         onClick={() => onFilterChange(status)}
@@ -159,7 +163,7 @@ export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, on
                                             : 'text-stone-400 dark:text-zinc-500 hover:text-stone-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
-                                        {status === 'in_stock' ? 'Lager' : status === 'sold' ? 'Verkauft' : 'Reserviert'}
+                                        {status === 'in_stock' ? 'Lager' : 'Verkauft'}
                                     </button>
                                 ))}
                             </div>
@@ -167,10 +171,15 @@ export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, on
                     </header>
 
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredItems.length === 0 ? (
-                            <div className="col-span-full flex flex-col items-center justify-center h-64 text-stone-300 dark:text-zinc-600">
-                                <ShoppingBag className="w-12 h-12 mb-3 opacity-20" />
-                                <p className="text-sm font-medium">Keine Ergebnisse.</p>
+                        {isLoading ? (
+                            Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={`skeleton-${i}`} />)
+                        ) : filteredItems.length === 0 ? (
+                            <div className="col-span-full">
+                                <EmptyState
+                                    icon={<ShoppingBag className="w-8 h-8" />}
+                                    title="Keine Artikel gefunden"
+                                    description={searchQuery ? "Es wurden keine Artikel gefunden, die der Suche entsprechen." : "Du hast noch keine Artikel angelegt. Füge dein erstes Item hinzu."}
+                                />
                             </div>
                         ) : (
                             filteredItems.map(item => {
@@ -207,7 +216,7 @@ export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, on
                                                     <ShieldCheck className="w-8 h-8" />
                                                 </div>
                                             ) : item.imageUrls && item.imageUrls.length > 0 ? (
-                                                <img src={item.imageUrls[0]} alt={item.model} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                                                <Image src={item.imageUrls[0]} alt={item.model || item.brand || 'Item'} fill sizes="96px" className="object-cover transition-transform group-hover:scale-105" />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-stone-300 dark:text-stone-600">
                                                     <ShoppingBag className="w-8 h-8 opacity-50" />
@@ -255,7 +264,7 @@ export const InventoryView = ({ userRole, items, onSelectItem, selectionMode, on
                     </div>
 
                     {/* Load More Button */}
-                    {onLoadMore && hasMore && (
+                    {onLoadMore && hasMore && !isLoading && filteredItems.length > 0 && (
                         <div className="mt-8 text-center">
                             <button
                                 onClick={onLoadMore}

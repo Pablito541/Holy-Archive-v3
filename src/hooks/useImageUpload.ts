@@ -17,6 +17,9 @@ export const useImageUpload = ({
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -25,9 +28,12 @@ export const useImageUpload = ({
         const maxImages = isBulkMode ? bulkQuantity : 5;
         const totalImages = imageUrls.length + imagePreviews.length + files.length;
         if (totalImages > maxImages) {
-            alert(`Maximal ${maxImages} Bilder erlaubt`);
+            setError(`Maximal ${maxImages} Bilder erlaubt`);
             return;
         }
+        
+        setError(null);
+        setSuccess(false);
 
         const newFiles: File[] = [];
         const newPreviews: string[] = [];
@@ -36,12 +42,12 @@ export const useImageUpload = ({
             const file = files[i];
 
             if (file.size > 10 * 1024 * 1024) {
-                alert(`Die Datei "${file.name}" ist zu groß (Maximal 10MB).`);
+                setError(`Die Datei "${file.name}" ist zu groß (Maximal 10MB).`);
                 continue;
             }
 
             if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) {
-                alert(`Dateityp von "${file.name}" nicht erlaubt. Nur JPEG, PNG, WebP und PDF erlaubt.`);
+                setError(`Dateityp von "${file.name}" nicht erlaubt. Nur JPEG, PNG, WebP und PDF erlaubt.`);
                 continue;
             }
 
@@ -87,7 +93,11 @@ export const useImageUpload = ({
         }
 
         setUploading(true);
+        setProgress(0);
+        setError(null);
+        setSuccess(false);
         const uploadedUrls: string[] = [];
+        let hadError = false;
 
         try {
             for (const file of pendingFiles) {
@@ -130,23 +140,43 @@ export const useImageUpload = ({
                     .getPublicUrl(fileName);
 
                 uploadedUrls.push(publicUrl);
+                
+                // Simulate progress updates for each file
+                setProgress(Math.min(((uploadedUrls.length) / pendingFiles.length) * 100, 100));
             }
 
+            setSuccess(true);
+            setPendingFiles([]);
+            setImagePreviews([]);
+            
             // Return combined list of existing and new URLs
             return [...imageUrls, ...uploadedUrls];
-        } catch (error) {
-            console.error('Error uploading images:', error);
-            throw error;
+        } catch (err: any) {
+            console.error('Error uploading images:', err);
+            setError(err.message || 'Upload fehlgeschlagen. Bitte prüfe deine Internetverbindung oder versuche es später.');
+            hadError = true;
+            throw err;
         } finally {
             setUploading(false);
+            // Reset progress after a delay if success
+            if (!hadError) {
+                setTimeout(() => {
+                    setProgress(0);
+                }, 2000);
+            }
         }
     };
+
+    const clearError = () => setError(null);
 
     const reset = () => {
         setPendingFiles([]);
         setImagePreviews([]);
         setImageUrls(initialImageUrls);
         setUploading(false);
+        setProgress(0);
+        setError(null);
+        setSuccess(false);
     }
 
     return {
@@ -155,6 +185,10 @@ export const useImageUpload = ({
         pendingFiles,
         imagePreviews,
         uploading,
+        progress,
+        error,
+        success,
+        clearError,
         handleFileChange,
         handleRemoveExistingImage,
         handleRemovePendingImage,

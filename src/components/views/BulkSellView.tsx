@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, ShoppingBag, Plus, Trash2 } from 'lucide-react';
 import { Item } from '../../types';
@@ -9,6 +10,8 @@ import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { CertificateProvider } from '../../types';
 import { validatePrice, validateDateNotFuture, validateTextLength, ValidationError } from '../../lib/validation';
+import { useToast } from '../ui/Toast';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 
 interface BulkSellViewProps {
     items: Item[];
@@ -26,6 +29,7 @@ interface BulkSellViewProps {
 }
 
 export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCancel }: BulkSellViewProps) => {
+    const { showToast } = useToast();
     const [formData, setFormData] = useState({
         totalPrice: 0,
         saleDate: new Date().toISOString().split('T')[0],
@@ -81,6 +85,9 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
     // Profit = Total Revenue + Cert Revenue - Total Purchase Price - Cert Costs - Fees - Shipping
     const totalProfit = formData.totalPrice + totalCertRevenue - totalPurchasePrice - totalCertCost - formData.totalFees - formData.totalShipping;
 
+    const isDirty = formData.totalPrice > 0 || formData.totalFees > 0 || formData.totalShipping > 0 || formData.buyer.length > 0;
+    useUnsavedChanges(isDirty);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -96,7 +103,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
             });
         } catch (error) {
             if (error instanceof ValidationError) {
-                alert(error.message);
+                showToast(error.message, 'error');
                 return;
             }
         }
@@ -146,7 +153,7 @@ export const BulkSellView = ({ items, certificateProviders = [], onConfirm, onCa
                             <div key={item.id} className="flex items-center gap-3 py-1.5">
                                 <div className="w-10 h-10 bg-stone-100 dark:bg-zinc-800 rounded-xl flex-shrink-0 relative overflow-hidden">
                                     {item.imageUrls && item.imageUrls[0] ? (
-                                        <img src={item.imageUrls[0]} className="w-full h-full object-cover" />
+                                        <Image src={item.imageUrls[0]} alt={item.model || ''} fill sizes="40px" className="object-cover" />
                                     ) : (
                                         <div className="flex items-center justify-center h-full text-stone-300 dark:text-zinc-600">
                                             <ShoppingBag className="w-4 h-4" />
