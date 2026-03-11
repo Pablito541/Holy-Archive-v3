@@ -30,8 +30,6 @@ export const CONDITIONS: { value: Condition, label: string }[] = [
     { value: 'poor', label: 'Schlecht' }
 ];
 
-export const SHOWROOM_SLUG = "holy-archive";
-
 export const SALES_CHANNELS = [
     'whatnot',
     'vinted',
