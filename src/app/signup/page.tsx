@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { ShoppingBag, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
 import { PasswordStrength } from '../../components/ui/PasswordStrength';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ui/Toast';
@@ -79,15 +78,32 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-zinc-950 text-stone-900 dark:text-zinc-100">
-            <FadeIn className="w-full max-w-sm text-center">
-                <div className="w-20 h-20 bg-stone-900 dark:bg-zinc-50 rounded-3xl mx-auto flex items-center justify-center mb-8 shadow-2xl shadow-stone-900/20 rotate-3">
-                    <ShoppingBag className="text-white dark:text-zinc-900 w-9 h-9" />
-                </div>
-                <h1 className="text-4xl font-serif font-bold mb-3">Account erstellen</h1>
-                <p className="text-stone-500 dark:text-zinc-400 mb-10 text-lg font-light">Starte mit Holy Archive</p>
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-[#131316] relative overflow-hidden">
 
-                <form onSubmit={handleSubmit} className="space-y-4 text-left">
+            {/* Ambient glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-stone-300/25 dark:bg-zinc-700/10 rounded-full blur-3xl pointer-events-none" />
+
+            <FadeIn className="w-full max-w-sm relative z-10">
+
+                {/* Logo */}
+                <div className="flex justify-center mb-10">
+                    <div className="w-16 h-16 bg-stone-900 dark:bg-zinc-50 rounded-2xl flex items-center justify-center shadow-2xl shadow-stone-900/25 dark:shadow-black/60 rotate-3">
+                        <ShoppingBag className="w-8 h-8 text-white dark:text-zinc-900" />
+                    </div>
+                </div>
+
+                {/* Heading */}
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-serif font-bold tracking-tight text-stone-900 dark:text-zinc-50 mb-2">
+                        Account erstellen
+                    </h1>
+                    <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-zinc-600">
+                        Starte mit Holy Archive
+                    </p>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <Input
                         type="email"
                         label="Email"
@@ -98,6 +114,7 @@ export default function SignupPage() {
                         error={errors.email}
                         required
                     />
+
                     <div>
                         <div className="relative">
                             <Input
@@ -113,13 +130,14 @@ export default function SignupPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-[38px] text-stone-400 hover:text-stone-600 dark:hover:text-zinc-300"
+                                className="absolute right-4 top-[38px] text-stone-400 hover:text-stone-600 dark:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
                             >
                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
                         <PasswordStrength password={password} />
                     </div>
+
                     <Input
                         type={showPassword ? 'text' : 'password'}
                         label="Passwort wiederholen"
@@ -130,17 +148,31 @@ export default function SignupPage() {
                         error={errors.confirm}
                         required
                     />
-                    <Button type="submit" className="w-full mt-8" loading={loading} fullWidth>
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Account erstellen'}
-                    </Button>
+
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-stone-900 dark:bg-zinc-50 text-white dark:text-zinc-900 shadow-xl shadow-stone-900/20 dark:shadow-black/30 hover:bg-black dark:hover:bg-white"
+                        >
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Account erstellen'}
+                        </button>
+                    </div>
                 </form>
 
-                <p className="mt-8 text-sm text-stone-500 dark:text-zinc-400">
-                    Bereits einen Account?{' '}
-                    <Link href="/signin" className="text-stone-900 dark:text-zinc-100 font-medium hover:underline">
-                        Anmelden
-                    </Link>
-                </p>
+                {/* Divider + Sign in */}
+                <div className="mt-8 pt-8 border-t border-stone-200 dark:border-zinc-800/60 text-center">
+                    <p className="text-sm text-stone-400 dark:text-zinc-600">
+                        Bereits einen Account?{' '}
+                        <Link
+                            href="/signin"
+                            className="text-stone-900 dark:text-zinc-200 font-semibold hover:underline underline-offset-2"
+                        >
+                            Anmelden
+                        </Link>
+                    </p>
+                </div>
+
             </FadeIn>
         </div>
     );

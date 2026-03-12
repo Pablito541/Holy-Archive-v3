@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, Mail, Loader2, ArrowLeft } from 'lucide-react';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ui/Toast';
 import Link from 'next/link';
@@ -44,32 +43,55 @@ export default function ResetPasswordPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-zinc-950 text-stone-900 dark:text-zinc-100">
-            <FadeIn className="w-full max-w-sm text-center">
-                <div className="w-20 h-20 bg-stone-100 dark:bg-zinc-800 rounded-3xl mx-auto flex items-center justify-center mb-8">
-                    <Mail className="text-stone-600 dark:text-zinc-300 w-9 h-9" />
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-[#131316] relative overflow-hidden">
+
+            {/* Ambient glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-stone-300/25 dark:bg-zinc-700/10 rounded-full blur-3xl pointer-events-none" />
+
+            <FadeIn className="w-full max-w-sm relative z-10">
+
+                {/* Logo */}
+                <div className="flex justify-center mb-10">
+                    <div className="w-16 h-16 bg-stone-900 dark:bg-zinc-50 rounded-2xl flex items-center justify-center shadow-2xl shadow-stone-900/25 dark:shadow-black/60 rotate-3">
+                        <ShoppingBag className="w-8 h-8 text-white dark:text-zinc-900" />
+                    </div>
                 </div>
 
                 {sent ? (
-                    <>
-                        <h1 className="text-3xl font-serif font-bold mb-3">Email gesendet</h1>
-                        <p className="text-stone-500 dark:text-zinc-400 mb-10 text-base font-light">
+                    <div className="text-center">
+                        {/* Success icon */}
+                        <div className="flex justify-center mb-6">
+                            <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
+                                <Mail className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                        </div>
+                        <h1 className="text-3xl font-serif font-bold tracking-tight text-stone-900 dark:text-zinc-50 mb-3">
+                            Email gesendet
+                        </h1>
+                        <p className="text-sm text-stone-500 dark:text-zinc-500 mb-10 leading-relaxed">
                             Falls ein Account mit dieser Email existiert, haben wir dir einen Link zum Zurücksetzen geschickt.
                         </p>
-                        <Link href="/dashboard">
-                            <Button variant="secondary" fullWidth icon={<ArrowLeft className="w-4 h-4" />}>
-                                Zurück zum Login
-                            </Button>
+                        <Link
+                            href="/signin"
+                            className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] bg-stone-900 dark:bg-zinc-50 text-white dark:text-zinc-900 shadow-xl shadow-stone-900/20 dark:shadow-black/30 hover:bg-black dark:hover:bg-white"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Zurück zum Login
                         </Link>
-                    </>
+                    </div>
                 ) : (
                     <>
-                        <h1 className="text-3xl font-serif font-bold mb-3">Passwort vergessen?</h1>
-                        <p className="text-stone-500 dark:text-zinc-400 mb-10 text-base font-light">
-                            Gib deine Email-Adresse ein und wir senden dir einen Link zum Zurücksetzen.
-                        </p>
+                        {/* Heading */}
+                        <div className="text-center mb-10">
+                            <h1 className="text-4xl font-serif font-bold tracking-tight text-stone-900 dark:text-zinc-50 mb-2">
+                                Passwort vergessen?
+                            </h1>
+                            <p className="text-[10px] uppercase tracking-[0.25em] font-semibold text-stone-400 dark:text-zinc-600">
+                                Wir senden dir einen Link
+                            </p>
+                        </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <Input
                                 type="email"
                                 label="Email"
@@ -79,18 +101,30 @@ export default function ResetPasswordPage() {
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                 required
                             />
-                            <Button type="submit" className="w-full mt-8" loading={loading} fullWidth>
-                                Passwort zurücksetzen
-                            </Button>
+
+                            <div className="pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-stone-900 dark:bg-zinc-50 text-white dark:text-zinc-900 shadow-xl shadow-stone-900/20 dark:shadow-black/30 hover:bg-black dark:hover:bg-white"
+                                >
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Passwort zurücksetzen'}
+                                </button>
+                            </div>
                         </form>
 
-                        <p className="mt-8 text-sm text-stone-500 dark:text-zinc-400">
-                            <Link href="/dashboard" className="text-stone-900 dark:text-zinc-100 font-medium hover:underline">
+                        <div className="mt-8 pt-8 border-t border-stone-200 dark:border-zinc-800/60 text-center">
+                            <Link
+                                href="/signin"
+                                className="text-sm text-stone-400 dark:text-zinc-600 hover:text-stone-700 dark:hover:text-zinc-400 transition-colors tracking-wide flex items-center justify-center gap-1.5"
+                            >
+                                <ArrowLeft className="w-3.5 h-3.5" />
                                 Zurück zum Login
                             </Link>
-                        </p>
+                        </div>
                     </>
                 )}
+
             </FadeIn>
         </div>
     );

@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Mail, RefreshCw, Loader2 } from 'lucide-react';
 import { FadeIn } from '../../components/ui/FadeIn';
-import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ui/Toast';
 import Link from 'next/link';
@@ -49,38 +48,67 @@ export default function VerifyEmailPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-zinc-950 text-stone-900 dark:text-zinc-100">
-            <FadeIn className="w-full max-w-sm text-center">
-                <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-3xl mx-auto flex items-center justify-center mb-8">
-                    <Mail className="text-emerald-600 dark:text-emerald-400 w-9 h-9" />
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-[#131316] relative overflow-hidden">
+
+            {/* Ambient glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-stone-300/25 dark:bg-zinc-700/10 rounded-full blur-3xl pointer-events-none" />
+
+            <FadeIn className="w-full max-w-sm relative z-10 text-center">
+
+                {/* Logo */}
+                <div className="flex justify-center mb-10">
+                    <div className="w-16 h-16 bg-stone-900 dark:bg-zinc-50 rounded-2xl flex items-center justify-center shadow-2xl shadow-stone-900/25 dark:shadow-black/60 rotate-3">
+                        <ShoppingBag className="w-8 h-8 text-white dark:text-zinc-900" />
+                    </div>
                 </div>
-                <h1 className="text-3xl font-serif font-bold mb-3">Email bestätigen</h1>
-                <p className="text-stone-500 dark:text-zinc-400 mb-2 text-base font-light">
+
+                {/* Email icon indicator */}
+                <div className="flex justify-center mb-6">
+                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/25 rounded-2xl flex items-center justify-center">
+                        <Mail className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                </div>
+
+                {/* Heading */}
+                <h1 className="text-4xl font-serif font-bold tracking-tight text-stone-900 dark:text-zinc-50 mb-3">
+                    Email bestätigen
+                </h1>
+                <p className="text-sm text-stone-500 dark:text-zinc-500 mb-1 leading-relaxed">
                     Wir haben dir eine Email geschickt
-                    {email && (
-                        <span className="block mt-1 font-medium text-stone-700 dark:text-zinc-300">{email}</span>
-                    )}
                 </p>
-                <p className="text-stone-400 dark:text-zinc-500 text-sm mb-10">
+                {email && (
+                    <p className="font-semibold text-stone-700 dark:text-zinc-300 text-sm mb-6">{email}</p>
+                )}
+                <p className="text-xs text-stone-400 dark:text-zinc-600 mb-10 leading-relaxed">
                     Bitte klicke auf den Link in der Email, um deinen Account zu bestätigen.
                 </p>
 
-                <Button
+                {/* Resend button */}
+                <button
                     onClick={handleResend}
-                    variant="secondary"
                     disabled={cooldown > 0 || sending}
-                    loading={sending}
-                    fullWidth
-                    icon={<RefreshCw className="w-4 h-4" />}
+                    className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-stone-900 dark:bg-zinc-50 text-white dark:text-zinc-900 shadow-xl shadow-stone-900/20 dark:shadow-black/30 hover:bg-black dark:hover:bg-white"
                 >
+                    {sending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <RefreshCw className="w-4 h-4" />
+                    )}
                     {cooldown > 0 ? `Erneut senden (${cooldown}s)` : 'Email erneut senden'}
-                </Button>
+                </button>
 
-                <p className="mt-8 text-sm text-stone-500 dark:text-zinc-400">
-                    <Link href="/dashboard" className="text-stone-900 dark:text-zinc-100 font-medium hover:underline">
-                        Zurück zum Login
-                    </Link>
-                </p>
+                <div className="mt-8 pt-8 border-t border-stone-200 dark:border-zinc-800/60 text-center">
+                    <p className="text-sm text-stone-400 dark:text-zinc-600">
+                        Falscher Account?{' '}
+                        <Link
+                            href="/signin"
+                            className="text-stone-900 dark:text-zinc-200 font-semibold hover:underline underline-offset-2"
+                        >
+                            Zurück zum Login
+                        </Link>
+                    </p>
+                </div>
+
             </FadeIn>
         </div>
     );
