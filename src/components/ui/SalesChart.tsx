@@ -13,13 +13,21 @@ import {
 
 export const SalesChart = ({ serverData, months = 12 }: { serverData?: any[], months?: number }) => {
     const chartData = useMemo(() => {
-        if (!serverData || serverData.length === 0) return [];
+        if (!serverData || serverData.length === 0) {
+            // Generate a flat zero baseline for the last 7 days
+            const today = new Date();
+            return Array.from({ length: 7 }, (_, i) => {
+                const date = new Date(today);
+                date.setDate(today.getDate() - (6 - i));
+                return {
+                    label: date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+                    revenue: 0,
+                    net_profit: 0,
+                };
+            });
+        }
         return serverData.slice(-months);
     }, [serverData, months]);
-
-    if (!chartData || chartData.length === 0) {
-        return <div className="w-full h-64 flex items-center justify-center text-stone-400">Keine Daten verfügbar</div>;
-    }
 
     const formatCurrency = (value: number) => {
         return value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
