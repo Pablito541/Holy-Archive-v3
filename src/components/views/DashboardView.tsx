@@ -236,7 +236,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                         {/* Desktop Grid Layout */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                             {/* Hero Card: Financial Overview */}
-                            <Card className="lg:col-span-2 p-6 sm:p-8 bg-[linear-gradient(135deg,_#222227_0%,_#181819_25%,_#0f0f11_48%,_#060607_70%,_#000000_100%)] text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0">
+                            <Card className="lg:col-span-2 p-6 sm:p-8 bg-[linear-gradient(135deg,_#181820_0%,_#111115_28%,_#09090c_55%,_#000000_100%)] text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0">
                                 {/* Background Decoration */}
                                 <div className="absolute top-0 right-0 w-80 h-80 bg-white/[0.03] rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none"></div>
                                 <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/[0.02] rounded-full blur-3xl -ml-40 -mb-40 pointer-events-none"></div>
@@ -297,7 +297,7 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
 
                             {/* Stock Overview */}
                             <Card
-                                className="p-6 sm:p-8 bg-[linear-gradient(135deg,_#222227_0%,_#181819_25%,_#0f0f11_48%,_#060607_70%,_#000000_100%)] text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0 flex flex-col cursor-pointer"
+                                className="p-6 sm:p-8 bg-[linear-gradient(135deg,_#181820_0%,_#111115_28%,_#09090c_55%,_#000000_100%)] text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0 flex flex-col cursor-pointer"
                                 onClick={onViewInventory}
                             >
                                 {/* Background Decoration */}
