@@ -41,10 +41,7 @@ export const LoginView = ({ onLogin }: { onLogin: (user: any) => void }) => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-[#131316] relative overflow-hidden">
-
-            {/* Ambient glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-stone-300/25 dark:bg-zinc-700/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-[#fafaf9] dark:bg-[#131316]">
 
             <FadeIn className="w-full max-w-sm relative z-10">
 
