@@ -236,10 +236,10 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                         {/* Desktop Grid Layout */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                             {/* Hero Card: Financial Overview */}
-                            <Card className="lg:col-span-2 p-6 sm:p-8 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0 dark:from-zinc-900 dark:to-black">
+                            <Card className="lg:col-span-2 p-6 sm:p-8 bg-stone-900 dark:bg-[#1c1c1f] text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0">
                                 {/* Background Decoration */}
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-                                <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/20 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none"></div>
+                                <div className="absolute top-0 right-0 w-80 h-80 bg-white/[0.03] rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none"></div>
+                                <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/[0.02] rounded-full blur-3xl -ml-40 -mb-40 pointer-events-none"></div>
 
                                 <div className="relative z-10">
                                     {/* Header with Average Margin */}
@@ -297,9 +297,11 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
 
                             {/* Stock Overview */}
                             <Card
-                                className="p-6 sm:p-8 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0 dark:from-zinc-900 dark:to-black flex flex-col cursor-pointer"
+                                className="p-6 sm:p-8 bg-stone-900 dark:bg-[#1c1c1f] text-white rounded-[2rem] shadow-2xl shadow-stone-900/20 relative overflow-hidden !border-0 flex flex-col cursor-pointer"
                                 onClick={onViewInventory}
                             >
+                                {/* Background Decoration */}
+                                <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.03] rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none"></div>
                                 <div className="flex items-center justify-between mb-8">
                                     <div className="flex items-center gap-2.5">
                                         <Package className="w-5 h-5 text-white" />
