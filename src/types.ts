@@ -1,4 +1,4 @@
-export type ItemStatus = 'in_stock' | 'reserved' | 'sold';
+export type ItemStatus = 'in_stock' | 'sold';
 export type Condition = 'mint' | 'very_good' | 'good' | 'fair' | 'poor';
 export type Category = 'bag' | 'wallet' | 'accessory' | 'lock' | 'other';
 
@@ -20,9 +20,6 @@ export interface Item {
     platformFeesEur?: number;
     shippingCostEur?: number;
     buyer?: string;
-
-    reservedFor?: string;
-    reservedUntil?: string;
 
     certificates?: ItemCertificate[];
 

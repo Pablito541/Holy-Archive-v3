@@ -148,7 +148,7 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
 
                         {selectionMode !== 'sell' && !isBulkSelect && (
                             <div className="flex p-1 bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-                                {(['in_stock', 'sold', 'reserved'] as const).map(status => (
+                                {(['in_stock', 'sold'] as const).map(status => (
                                     <button
                                         key={status}
                                         onClick={() => onFilterChange(status)}
@@ -157,7 +157,7 @@ export const InventoryView = ({ items, onSelectItem, selectionMode, onLoadMore, 
                                             : 'text-stone-400 dark:text-zinc-500 hover:text-stone-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
-                                        {status === 'in_stock' ? 'Lager' : status === 'sold' ? 'Verkauft' : 'Reserviert'}
+                                        {status === 'in_stock' ? 'Lager' : 'Verkauft'}
                                     </button>
                                 ))}
                             </div>

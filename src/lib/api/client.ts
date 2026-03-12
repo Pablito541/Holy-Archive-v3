@@ -63,8 +63,6 @@ export interface DbItem {
   sale_channel: string | null;
   platform_fees_eur: number | null;
   shipping_cost_eur: number | null;
-  reserved_for: string | null;
-  reserved_until: string | null;
   buyer: string | null;
   image_urls: string[];
   notes: string;
@@ -90,8 +88,6 @@ export function mapDbItemToItem(d: DbItem): Item {
     saleChannel: d.sale_channel ?? undefined,
     platformFeesEur: d.platform_fees_eur ?? undefined,
     shippingCostEur: d.shipping_cost_eur ?? undefined,
-    reservedFor: d.reserved_for ?? undefined,
-    reservedUntil: d.reserved_until ?? undefined,
     buyer: d.buyer ?? undefined,
     certificates: d.item_certificates?.map((c: any) => ({
       id: c.id,
