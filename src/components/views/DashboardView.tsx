@@ -53,12 +53,15 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
         highestProfitBrand: null as any,
         monthlyData: [] as any[]
     });
-    const [isLoadingStats, setIsLoadingStats] = useState(true);
+    const [isLoadingStats, setIsLoadingStats] = useState(false);
 
     // Fetch dashboard stats from API
     React.useEffect(() => {
         const fetchStats = async () => {
-            if (!currentOrgId) return;
+            if (!currentOrgId) {
+                setIsLoadingStats(false);
+                return;
+            }
 
             setIsLoadingStats(true);
             try {
@@ -439,7 +442,11 @@ export const DashboardView = ({ items, onViewInventory, onAddItem, userEmail, on
                                     </div>
                                 </button>
                                 <div className="space-y-4">
-                                    {displayStats.channels.map((c: any, i: number) => (
+                                    {displayStats.channels.length === 0 ? (
+                                        <p className="text-sm text-stone-400 dark:text-zinc-600 text-center py-4">
+                                            Noch keine Verkäufe erfasst
+                                        </p>
+                                    ) : displayStats.channels.map((c: any, i: number) => (
                                         <div
                                             key={c.channel}
                                             className="w-full text-left relative"
