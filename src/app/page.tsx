@@ -26,7 +26,7 @@ export default function LandingPage() {
         </div>
 
         <Link
-          href="/dashboard"
+          href="/signin"
           className="group flex items-center gap-2 border border-black dark:border-white px-8 py-4 rounded-full hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
         >
           <span className="font-medium tracking-wide">ENTER</span>

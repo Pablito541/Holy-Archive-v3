@@ -137,7 +137,7 @@ export default function SignupPage() {
 
                 <p className="mt-8 text-sm text-stone-500 dark:text-zinc-400">
                     Bereits einen Account?{' '}
-                    <Link href="/dashboard" className="text-stone-900 dark:text-zinc-100 font-medium hover:underline">
+                    <Link href="/signin" className="text-stone-900 dark:text-zinc-100 font-medium hover:underline">
                         Anmelden
                     </Link>
                 </p>
