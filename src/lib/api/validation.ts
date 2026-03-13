@@ -15,7 +15,7 @@ export function validateEnum(value: string, allowed: string[], fieldName: string
 }
 
 export function validatePositiveNumber(value: unknown, fieldName: string): string | null {
-  if (typeof value !== 'number' || value < 0) {
+  if (typeof value !== 'number' || isNaN(value) || value < 0) {
     return `'${fieldName}' muss eine positive Zahl sein`;
   }
   return null;
